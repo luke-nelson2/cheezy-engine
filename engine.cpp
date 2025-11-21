@@ -57,6 +57,10 @@ class Attack{
 public:
   uint16_t move_value;
   static uint64_t knight_attacks[64];
+  static uint64_t white_pawn_pushes[64];
+  static uint64_t black_pawn_pushes[64];
+  static uint64_t white_pawn_attacks[64];
+  static uint64_t black_pawn_attacks[64];
 
   static void init_knight_table(){
     int idx;
@@ -122,9 +126,48 @@ public:
     }
   }
 
+  static void init_pawn_push_table(){
+    int idx;
+    for (int j=0; j<8; j++){
+      for (int i=0; i<8; i++){
+        idx = j*8 + i;
+        white_pawn_attacks[idx] = 0;
+        white_pawn_pushes[idx] = 0;
+        black_pawn_attacks[idx] = 0;
+        black_pawn_pushes[idx] = 0;
+        if (j>0 && j<7){
+          white_pawn_pushes[idx] = 1ULL << (idx + 8);
+          black_pawn_pushes[idx] = 1ULL << (idx - 8);
+          if (i>0){
+            white_pawn_attacks[idx] += 1ULL << (idx + 7);
+            black_pawn_attacks[idx] += 1ULL << (idx - 9);
+          }
+          if (i<7){
+            white_pawn_attacks[idx] += 1ULL << (idx + 9);
+            black_pawn_attacks[idx] += 1ULL << (idx - 7);
+          }
+        }
+        if (j==1){
+          white_pawn_pushes[idx] = white_pawn_pushes[idx] + (1ULL << (idx+16));
+        }
+        if (j==6){
+          black_pawn_pushes[idx] = black_pawn_pushes[idx] + (1ULL << (idx-16));
+        }
+      }
+    }
+  }
+
+  static void init_pawn_attack_table(){
+
+  }
+
 };
 
 uint64_t Attack::knight_attacks[64];
+uint64_t Attack::white_pawn_pushes[64];
+uint64_t Attack::black_pawn_pushes[64];
+uint64_t Attack::white_pawn_attacks[64];
+uint64_t Attack::black_pawn_attacks[64];
 
 // TODO:
 // Init bitboards
@@ -136,6 +179,7 @@ uint64_t Attack::knight_attacks[64];
 // Get evaluation for the state of the board
 //   Use positional evaluation
 // minimax search with alpha beta pruning
+//   unmake moves while going back up the tree
 // Convert moves to UCI (e2e4)
 //   perform XOR operation on 2 aggregate bitboards
 
@@ -149,6 +193,7 @@ int main(){
   //Position board{};
   //print_bitboard(board.black_pawn);
   Attack::init_knight_table();
-  print_bitboard(Attack::knight_attacks[63]);
+  Attack::init_pawn_push_table();
+  print_bitboard(Attack::white_pawn_attacks[14]);
   return 0;
 }

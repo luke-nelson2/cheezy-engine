@@ -61,6 +61,7 @@ public:
   static uint64_t black_pawn_pushes[64];
   static uint64_t white_pawn_attacks[64];
   static uint64_t black_pawn_attacks[64];
+  static uint64_t king_attacks[64];
 
   static void init_knight_table(){
     int idx;
@@ -157,8 +158,38 @@ public:
     }
   }
 
-  static void init_pawn_attack_table(){
-
+  static void init_king_attack_table(){
+    int idx;
+    for (int i=0; i<8; i++){
+      for (int j=0; j<8; j++){
+        idx = j*8 + i;
+        king_attacks[idx] = 0;
+        if (i>0){
+          king_attacks[idx] += (1ULL << (idx - 1));
+          if (j>0){
+            king_attacks[idx] += (1ULL << (idx - 9));
+          }
+          if (j<7){
+            king_attacks[idx] += (1ULL << (idx + 7));
+          }
+        }
+        if (i<7){
+          king_attacks[idx] += (1ULL << (idx + 1));
+          if (j>0){
+            king_attacks[idx] += (1ULL << (idx - 7));
+          }
+          if (j<7){
+            king_attacks[idx] += (1ULL << (idx + 9));
+          }
+        }
+        if (j>0){
+          king_attacks[idx] += (1ULL << (idx - 8));
+        }
+        if (j<7){
+          king_attacks[idx] += (1ULL << (idx + 8));
+        }
+      }
+    }
   }
 
 };
@@ -168,6 +199,7 @@ uint64_t Attack::white_pawn_pushes[64];
 uint64_t Attack::black_pawn_pushes[64];
 uint64_t Attack::white_pawn_attacks[64];
 uint64_t Attack::black_pawn_attacks[64];
+uint64_t Attack::king_attacks[64];
 
 // TODO:
 // Init bitboards
@@ -194,6 +226,7 @@ int main(){
   //print_bitboard(board.black_pawn);
   Attack::init_knight_table();
   Attack::init_pawn_push_table();
-  print_bitboard(Attack::white_pawn_attacks[14]);
+  Attack::init_king_attack_table();
+  print_bitboard(Attack::king_attacks[32]);
   return 0;
 }

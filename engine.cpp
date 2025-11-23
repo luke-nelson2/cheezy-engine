@@ -1,5 +1,5 @@
 #include <cstdint>
-#include <bitset>
+// #include <bitset>
 #include <iostream>
 
 class Position{
@@ -165,27 +165,35 @@ public:
         idx = j*8 + i;
         king_attacks[idx] = 0;
         if (i>0){
+          // WEST
           king_attacks[idx] += (1ULL << (idx - 1));
           if (j>0){
+            // SOUTH WEST
             king_attacks[idx] += (1ULL << (idx - 9));
           }
           if (j<7){
+            // NORTH WEST
             king_attacks[idx] += (1ULL << (idx + 7));
           }
         }
         if (i<7){
+          // EAST
           king_attacks[idx] += (1ULL << (idx + 1));
           if (j>0){
+            // SOUTH EAST
             king_attacks[idx] += (1ULL << (idx - 7));
           }
           if (j<7){
+            // NORTH EAST
             king_attacks[idx] += (1ULL << (idx + 9));
           }
         }
         if (j>0){
+          // SOUTH
           king_attacks[idx] += (1ULL << (idx - 8));
         }
         if (j<7){
+          // NORTH
           king_attacks[idx] += (1ULL << (idx + 8));
         }
       }

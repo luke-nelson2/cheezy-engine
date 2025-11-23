@@ -1,3 +1,4 @@
+#include "attacks.h"
 #include <cstdint>
 // #include <bitset>
 #include <iostream>
@@ -53,161 +54,6 @@ void print_bitboard(uint64_t bb) {
     std::cout << "\n";
 }
 
-class Attack{
-public:
-  uint16_t move_value;
-  static uint64_t knight_attacks[64];
-  static uint64_t white_pawn_pushes[64];
-  static uint64_t black_pawn_pushes[64];
-  static uint64_t white_pawn_attacks[64];
-  static uint64_t black_pawn_attacks[64];
-  static uint64_t king_attacks[64];
-
-  static void init_knight_table(){
-    int idx;
-    
-    for (int rank=0; rank<8; rank++){
-      for (int file=0; file<8; file++){
-        uint64_t mask{0x0};
-        idx = file*8+rank;
-        uint64_t piece_bit = 1ULL << idx;
-        uint64_t target;
-
-        // SSW
-        if (rank>0 && file>1) {
-          target = piece_bit >> 17;
-          mask |= target;
-        }
-
-        // SSE
-        if (rank<7 && file>1) {
-          target = piece_bit >> 15;
-          mask |= target;
-        }
-
-        // ESE
-        if (rank<6 && file>0) {
-          target = piece_bit >> 6;
-          mask |= target;
-        }
-
-        // ENE
-        if (rank<6 && file<7) {
-          target = piece_bit << 10;
-          mask |= target;
-        }
-
-        // NNE
-        if (rank<7 && file<6) {
-          target = piece_bit << 17;
-          mask |= target;
-        }
-
-        // NNW
-        if (rank>0 && file<6) {
-          target = piece_bit << 15;
-          mask |= target;
-        }
-
-        // WNW
-        if (rank>1 && file<7) {
-          target = piece_bit << 6;
-          mask |= target;
-        }
-
-        // WSW
-        if (rank>1 && file>0) {
-          target = piece_bit >> 10;
-          mask |= target;
-        }
-
-
-        knight_attacks[idx] = mask;
-      }
-    }
-  }
-
-  static void init_pawn_push_table(){
-    int idx;
-    for (int j=0; j<8; j++){
-      for (int i=0; i<8; i++){
-        idx = j*8 + i;
-        white_pawn_attacks[idx] = 0;
-        white_pawn_pushes[idx] = 0;
-        black_pawn_attacks[idx] = 0;
-        black_pawn_pushes[idx] = 0;
-        if (j>0 && j<7){
-          white_pawn_pushes[idx] = 1ULL << (idx + 8);
-          black_pawn_pushes[idx] = 1ULL << (idx - 8);
-          if (i>0){
-            white_pawn_attacks[idx] += 1ULL << (idx + 7);
-            black_pawn_attacks[idx] += 1ULL << (idx - 9);
-          }
-          if (i<7){
-            white_pawn_attacks[idx] += 1ULL << (idx + 9);
-            black_pawn_attacks[idx] += 1ULL << (idx - 7);
-          }
-        }
-        if (j==1){
-          white_pawn_pushes[idx] = white_pawn_pushes[idx] + (1ULL << (idx+16));
-        }
-        if (j==6){
-          black_pawn_pushes[idx] = black_pawn_pushes[idx] + (1ULL << (idx-16));
-        }
-      }
-    }
-  }
-
-  static void init_king_attack_table(){
-    int idx;
-    for (int i=0; i<8; i++){
-      for (int j=0; j<8; j++){
-        idx = j*8 + i;
-        king_attacks[idx] = 0;
-        if (i>0){
-          // WEST
-          king_attacks[idx] += (1ULL << (idx - 1));
-          if (j>0){
-            // SOUTH WEST
-            king_attacks[idx] += (1ULL << (idx - 9));
-          }
-          if (j<7){
-            // NORTH WEST
-            king_attacks[idx] += (1ULL << (idx + 7));
-          }
-        }
-        if (i<7){
-          // EAST
-          king_attacks[idx] += (1ULL << (idx + 1));
-          if (j>0){
-            // SOUTH EAST
-            king_attacks[idx] += (1ULL << (idx - 7));
-          }
-          if (j<7){
-            // NORTH EAST
-            king_attacks[idx] += (1ULL << (idx + 9));
-          }
-        }
-        if (j>0){
-          // SOUTH
-          king_attacks[idx] += (1ULL << (idx - 8));
-        }
-        if (j<7){
-          // NORTH
-          king_attacks[idx] += (1ULL << (idx + 8));
-        }
-      }
-    }
-  }
-
-};
-
-uint64_t Attack::knight_attacks[64];
-uint64_t Attack::white_pawn_pushes[64];
-uint64_t Attack::black_pawn_pushes[64];
-uint64_t Attack::white_pawn_attacks[64];
-uint64_t Attack::black_pawn_attacks[64];
-uint64_t Attack::king_attacks[64];
 
 // TODO:
 // Init bitboards
@@ -232,9 +78,6 @@ uint64_t Attack::king_attacks[64];
 int main(){
   //Position board{};
   //print_bitboard(board.black_pawn);
-  Attack::init_knight_table();
-  Attack::init_pawn_push_table();
-  Attack::init_king_attack_table();
-  print_bitboard(Attack::king_attacks[32]);
+  print_bitboard(Attacks::KING_MOVES[45]);
   return 0;
 }

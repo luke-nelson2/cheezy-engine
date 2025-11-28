@@ -4,6 +4,30 @@
 #include <iostream>
 #include <sys/types.h>
 
+enum Piece : uint8_t {
+  WHITE = 0,
+  BLACK = 1,
+
+  WHITE_PAWN = 0,
+  BLACK_PAWN = 1,
+  WHITE_KNIGHT = 2,
+  BLACK_KNIGHT = 3,
+  WHITE_BISHOP = 4,
+  BLACK_BISHOP = 5,
+  WHITE_ROOK = 6,
+  BLACK_ROOK = 7,
+  WHITE_QUEEN = 8,
+  BLACK_QUEEN = 9,
+  WHITE_KING = 10,
+  BLACK_KING = 11,
+
+  NO_PIECE = 12
+};
+
+// 16 bit structure
+// First 6 bits denote the origin square
+// Next 6 bits denote the destination square
+// Last 4 bits describe the move type
 struct Move {
   uint16_t move_data;
 
@@ -33,19 +57,10 @@ struct Move {
 
 class Position{
 public:
-  uint64_t white_pawn;
-  uint64_t white_knight;
-  uint64_t white_bishop;
-  uint64_t white_rook;
-  uint64_t white_queen;
-  uint64_t white_king;
-
-  uint64_t black_pawn;
-  uint64_t black_knight;
-  uint64_t black_bishop;
-  uint64_t black_rook;
-  uint64_t black_queen;
-  uint64_t black_king;
+  std::array<uint64_t, 12> all_piece_bitboards;
+  uint64_t white_bb;
+  uint64_t black_bb;
+  uint64_t total_bb;
 
   unsigned char c_rights;
   uint64_t ep_target;
@@ -54,19 +69,19 @@ public:
 
 
   Position() {
-    white_pawn = 0xFF00ULL;
-    white_knight = 0x42ULL;
-    white_bishop = 0x24ULL;
-    white_rook = 0x81ULL;
-    white_king = 0x10ULL;
-    white_queen = 0x8ULL;
+    all_piece_bitboards[WHITE_PAWN] = 0xFF00ULL;
+    all_piece_bitboards[WHITE_KNIGHT] = 0x42ULL;
+    all_piece_bitboards[WHITE_BISHOP] = 0x24ULL;
+    all_piece_bitboards[WHITE_ROOK] = 0x81ULL;
+    all_piece_bitboards[WHITE_KING] = 0x10ULL;
+    all_piece_bitboards[WHITE_QUEEN] = 0x8ULL;
 
-    black_pawn = 0xFF'00'00'00'00'00'00ULL;
-    black_knight = 0x42'00'00'00'00'00'00'00ULL;
-    black_bishop = 0x24'00'00'00'00'00'00'00ULL;
-    black_rook = 0x81'00'00'00'00'00'00'00ULL;
-    black_king = 0x10'00'00'00'00'00'00'00ULL;
-    black_queen = 0x8'00'00'00'00'00'00'00ULL;
+    all_piece_bitboards[BLACK_PAWN] = 0xFF'00'00'00'00'00'00ULL;
+    all_piece_bitboards[BLACK_KNIGHT] = 0x42'00'00'00'00'00'00'00ULL;
+    all_piece_bitboards[BLACK_BISHOP] = 0x24'00'00'00'00'00'00'00ULL;
+    all_piece_bitboards[BLACK_ROOK] = 0x81'00'00'00'00'00'00'00ULL;
+    all_piece_bitboards[BLACK_KING] = 0x10'00'00'00'00'00'00'00ULL;
+    all_piece_bitboards[BLACK_QUEEN] = 0x8'00'00'00'00'00'00'00ULL;
 
     // PAWNS = 0/0b0    0
     // KNIGHT = 1/0b1   2
@@ -76,59 +91,80 @@ public:
     // KING = 5/0b101   10
     // ADD ONE IF BLACK
 
+    white_bb = 0;
+    black_bb = 0;
+    total_bb = 0;
+
+    for (int i = 0; i<=10; i+=2){
+      white_bb |= all_piece_bitboards[i];
+      black_bb |= all_piece_bitboards[i+1];
+    }
+
+    total_bb = white_bb | black_bb;
+
     for (int i = 0; i<64; i++) {
-      piece_list[i] = 0;
+      piece_list[i] = 12;
     }
 
     // PAWNS 
     for (int i = 8; i<16; i++) {
       // WHITE 0b00
-      piece_list[i] = 0;
+      piece_list[i] = WHITE_PAWN;
       // BLACK 0b00
-      piece_list[i+48] = 1;
+      piece_list[i+48] = BLACK_PAWN;
     }
 
     // WHITE KNIGHTS 0b10
-    piece_list[1] = 2;
-    piece_list[6] = 2;
+    piece_list[1] = WHITE_KNIGHT;
+    piece_list[6] = WHITE_KNIGHT;
 
     // BLACK KNIGHTS 0b11
-    piece_list[57] = 3;
-    piece_list[62] = 3;
+    piece_list[57] = BLACK_KNIGHT;
+    piece_list[62] = BLACK_KNIGHT;
 
     // WHITE BISHOPS
-    piece_list[2] = 4;
-    piece_list[5] = 4;
+    piece_list[2] = WHITE_BISHOP;
+    piece_list[5] = WHITE_BISHOP;
 
     // BLACK BISHOPS
-    piece_list[58] = 5;
-    piece_list[61] = 5;
+    piece_list[58] = BLACK_BISHOP;
+    piece_list[61] = BLACK_BISHOP;
 
     // WHITE ROOKS
-    piece_list[0] = 6;
-    piece_list[7] = 6;
+    piece_list[0] = WHITE_ROOK;
+    piece_list[7] = WHITE_ROOK;
 
     // BLACK ROOKS
-    piece_list[56] = 7;
-    piece_list[63] = 7;
+    piece_list[56] = BLACK_ROOK;
+    piece_list[63] = BLACK_ROOK;
 
     // WHITE QUEEN
-    piece_list[3] = 8;
+    piece_list[3] = WHITE_QUEEN;
 
     // BLACK QUEEN
-    piece_list[59] = 9;
+    piece_list[59] = BLACK_QUEEN;
 
     // WHITE KING
-    piece_list[4] = 10;
+    piece_list[4] = WHITE_KING;
 
     // BLACK KING
-    piece_list[60] = 11;
+    piece_list[60] = BLACK_KING;
   }
   
   void make_move(Move move){
     uint8_t from_sq = move.get_from_sq();
     uint8_t to_sq = move.get_to_sq();
     uint8_t origin_piece_type = piece_list[from_sq];
+    uint8_t captured_piece_type = piece_list[to_sq];
+    // UPDATE:
+    // ORIGIN PIECE BITBOARD
+    // CAPTURED PIECE BITBOARD (IF APPLICABLE)
+    // OCCUPANCY BITBOARD
+    all_piece_bitboards[origin_piece_type] ^= (1 << from_sq);
+    all_piece_bitboards[origin_piece_type] |= (1 << to_sq);
+    if (captured_piece_type < 12) {
+      all_piece_bitboards[captured_piece_type] ^= (1 << to_sq);
+    }
   }
 
 };
@@ -183,8 +219,7 @@ int main(){
   //Position board{};
   //print_bitboard(board.black_pawn);
   // print_bitboard(Attacks::KING_MOVES[45]);
-  Move move1(54,32);
-  std::cout << move1.move_data << std::endl;
-  std::cout << (int)(move1.get_to_sq()) << std::endl;
+  Position test{};
+  print_bitboard(test.total_bb);
   return 0;
 }

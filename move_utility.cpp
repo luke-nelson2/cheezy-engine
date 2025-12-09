@@ -1,7 +1,7 @@
-#include "attacks.h"
+#include "move_utility.h"
 #include <cstdint>
 
-namespace Attacks {
+namespace MoveUtility {
 
   std::array<uint64_t, 64> init_knight_table(){
     int idx;
@@ -136,7 +136,20 @@ namespace Attacks {
     return king_attacks;
   }
 
+  std::array<uint8_t, 64> init_c_rights_update() {
+    std::array<uint8_t, 64> c_rights_update = {0}; 
+    // Bit Order: White Kingside, White Queenside, Black Kingside, Black Queenside
+    c_rights_update[0] = 2;
+    c_rights_update[4] = 3;
+    c_rights_update[7] = 1;
+    c_rights_update[56] = 8;
+    c_rights_update[60] = 12;
+    c_rights_update[63] = 4;
+    return c_rights_update;
+  }
+
   const std::array<uint64_t, 64> KNIGHT_MOVES = init_knight_table();
   const std::array<uint64_t, 64> KING_MOVES = init_king_table();
   const std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS = init_pawn_attack_table();
+  const std::array<uint8_t, 64> CASTLING_RIGHTS_UPDATE = init_c_rights_update();
 }

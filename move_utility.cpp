@@ -148,8 +148,31 @@ namespace MoveUtility {
     return c_rights_update;
   }
 
+  std::array<uint64_t, 64> init_rook_mask_table() {
+    std::array<uint64_t, 64> rook_mask_table = {0};
+    uint8_t rank = 0;
+    uint8_t file = 0;
+
+    for (uint8_t i = 0; i < 64; i++) {
+      rank = i / 8;
+      file = i % 8;
+      for (uint8_t j = 1; j < 7; j++) {
+        // Rank moves
+        if (j != file) {
+          rook_mask_table[i] |= 1ULL << (rank * 8 + j);
+        }
+        if (j != rank) {
+          rook_mask_table[i] |= 1ULL << (file + j * 8);
+        }
+      }
+    }
+
+    return rook_mask_table;
+  }
+
   const std::array<uint64_t, 64> KNIGHT_MOVES = init_knight_table();
   const std::array<uint64_t, 64> KING_MOVES = init_king_table();
   const std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS = init_pawn_attack_table();
   const std::array<uint8_t, 64> CASTLING_RIGHTS_UPDATE = init_c_rights_update();
+  const std::array<uint64_t, 64> ROOK_MASK_TABLE = init_rook_mask_table();
 }

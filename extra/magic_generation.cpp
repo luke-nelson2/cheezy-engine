@@ -143,7 +143,7 @@ uint64_t find_magic(uint8_t square, uint8_t relevant_bits, uint8_t bishop) {
 
   std::array<uint64_t, 4096> attacks;
   std::array<uint64_t, 4096> occupancies;
-  std::array<uint64_t, 4096> used_attacks;
+  std::array<int, 4096> used_table;
 
   uint16_t occupancy_variations = 1 << relevant_bits;
   uint64_t mask_attack = bishop ? MoveUtility::BISHOP_MASK_TABLE[square]
@@ -163,7 +163,7 @@ uint64_t find_magic(uint8_t square, uint8_t relevant_bits, uint8_t bishop) {
     if (count_bits((mask_attack * magic_candidate) & 0xFF00000000000000ULL) < 6)
       continue;
 
-    used_attacks.fill(0);
+    used_table.fill(-1);
 
     uint16_t count, fail;
 
@@ -171,10 +171,18 @@ uint64_t find_magic(uint8_t square, uint8_t relevant_bits, uint8_t bishop) {
       uint64_t magic_index =
           ((occupancies[count] * magic_candidate) >> (64 - relevant_bits));
 
-      if (used_attacks[magic_index] == 0ULL) {
-        used_attacks[magic_index] = attacks[count];
-      } else if (used_attacks[magic_index] != attacks[count]) {
-        fail = 1;
+      if (used_table[magic_index] == -1) {
+        // Slot is empty
+        used_table[magic_index] = count;
+      } else {
+        // Slot is taken. Check if it's a "Good" or "Bad" collision.
+        // A collision is valid (Constructive) ONLY if the attacks are identical.
+        int existing_count = used_table[magic_index];
+        
+        if (attacks[existing_count] != attacks[count]) {
+           fail = 1; // Different attacks mapping to same spot -> BAD.
+           break;
+        }
       }
     }
 
@@ -201,6 +209,6 @@ std::array<uint64_t, 64> find_all_magics(uint8_t bishop) {
 }
 
 int main() {
-  find_all_magics(1);
+  find_all_magics(0);
   return 0;
 }

@@ -1,6 +1,9 @@
 #include "move_utility.h"
 #include "position.h"
 #include <iostream>
+#include <cstdint>
+
+using namespace MoveUtility;
 
 void print_bitboard(uint64_t bb) {
   for (int i = 7; i >= 0; i--) {
@@ -17,10 +20,9 @@ void print_bitboard(uint64_t bb) {
 }
 
 int main() {
-  // Position test{};
-  // Move move(8,16);
-  // test.make_move(move);
-  // print_bitboard(test.total_bb);
-  // std::cout << (int)test.en_passant_sq << '\n';
-  print_bitboard(MoveUtility::ROOK_MASK_TABLE[2]);
+  uint64_t occ = 0;
+  set_bit(occ, c1);
+  set_bit(occ, a5);
+  uint64_t att = get_rook_attacks(a1, occ);
+  print_bitboard(att);
 }

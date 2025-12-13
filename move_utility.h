@@ -38,6 +38,7 @@ extern const std::array<std::array<uint64_t, 64>, 2> PAWN_ATTACKS;
 extern const std::array<uint8_t, 64> CASTLING_RIGHTS_UPDATE;
 
 inline uint64_t get_rook_attacks(uint8_t square, uint64_t occupancy) {
+
   const MagicEntry& m = ROOK_MAGIC_ENTRY[square];
   uint64_t masked_occ = m.mask & occupancy;
   uint16_t magic_idx = (masked_occ * m.magic) >> m.shift;
@@ -46,10 +47,15 @@ inline uint64_t get_rook_attacks(uint8_t square, uint64_t occupancy) {
 }
 
 inline uint64_t get_bishop_attacks(uint8_t square, uint64_t occupancy) {
+  
   const MagicEntry& m = BISHOP_MAGIC_ENTRY[square];
   uint64_t masked_occ = m.mask & occupancy;
   uint16_t magic_idx = (masked_occ * m.magic) >> m.shift;
 
   return BISHOP_ATTACKS[magic_idx + m.offset];
+}
+
+inline uint8_t get_lsbit_index(uint64_t bitboard) {
+  return __builtin_ctzll(bitboard);
 }
 } // namespace MoveUtility

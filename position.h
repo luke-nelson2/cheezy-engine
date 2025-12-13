@@ -25,7 +25,6 @@ public:
   uint16_t ply;
 
   std::array<UndoInfo, 2048> history_stack;
-
   std::array<uint8_t, 64> piece_list;
 
   Position() {
@@ -121,6 +120,7 @@ public:
   // Updates all relevant bitboards according to move
   // Assumes legal move
   void make_move(Move move){
+
     uint8_t from_sq = move.get_from_sq();
     uint8_t to_sq = move.get_to_sq();
     uint8_t moving_piece_type = piece_list[from_sq];
@@ -171,6 +171,7 @@ public:
   }
 
   void unmake_move() {
+
     uint8_t from_sq = history_stack[ply-1].move.get_from_sq();
     uint8_t to_sq = history_stack[ply-1].move.get_to_sq();
     uint64_t from_bit = 1ULL << from_sq;

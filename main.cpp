@@ -1,5 +1,5 @@
 #include "move_utility.h"
-#include "position.h"
+// #include "position.h"
 #include <iostream>
 #include <cstdint>
 
@@ -20,9 +20,6 @@ void print_bitboard(uint64_t bb) {
 }
 
 int main() {
-  uint64_t occ = 0;
-  set_bit(occ, c1);
-  set_bit(occ, a5);
-  uint64_t att = get_rook_attacks(a1, occ);
-  print_bitboard(att);
+  print_bitboard(FILE_E);
+  return 0;
 }

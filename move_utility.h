@@ -21,6 +21,24 @@ enum Square : uint8_t {
   NO_SQUARE
 };
 
+constexpr uint64_t RANK_1 = 0x00'00'00'00'00'00'00'FF;
+constexpr uint64_t RANK_2 = 0x00'00'00'00'00'00'FF'00;
+constexpr uint64_t RANK_3 = 0x00'00'00'00'00'FF'00'00;
+constexpr uint64_t RANK_4 = 0x00'00'00'00'FF'00'00'00;
+constexpr uint64_t RANK_5 = 0x00'00'00'FF'00'00'00'00;
+constexpr uint64_t RANK_6 = 0x00'00'FF'00'00'00'00'00;
+constexpr uint64_t RANK_7 = 0x00'FF'00'00'00'00'00'00;
+constexpr uint64_t RANK_8 = 0xFF'00'00'00'00'00'00'00;
+
+constexpr uint64_t FILE_A = 0x01'01'01'01'01'01'01'01;
+constexpr uint64_t FILE_B = 0x02'02'02'02'02'02'02'02;
+constexpr uint64_t FILE_C = 0x04'04'04'04'04'04'04'04;
+constexpr uint64_t FILE_D = 0x08'08'08'08'08'08'08'08;
+constexpr uint64_t FILE_E = 0x10'10'10'10'10'10'10'10;
+constexpr uint64_t FILE_F = 0x20'20'20'20'20'20'20'20;
+constexpr uint64_t FILE_G = 0x40'40'40'40'40'40'40'40;
+constexpr uint64_t FILE_H = 0x80'80'80'80'80'80'80'80;
+
 struct MagicEntry {
   uint64_t mask;
   uint64_t magic;

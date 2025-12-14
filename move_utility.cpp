@@ -264,6 +264,7 @@ std::array<uint64_t, 64> init_knight_table() {
   return knight_attacks;
 }
 
+// First index: side to move: WHITE (0) or BLACK (1)
 std::array<std::array<uint64_t, 64>, 2> init_pawn_attack_table() {
   int idx;
   std::array<std::array<uint64_t, 64>, 2> pawn_attacks;
@@ -274,10 +275,12 @@ std::array<std::array<uint64_t, 64>, 2> init_pawn_attack_table() {
       pawn_attacks[1][idx] = 0;
       if (j > 0 && j < 7) {
         if (i > 0) {
+          // WEST
           pawn_attacks[0][idx] += 1ULL << (idx + 7);
           pawn_attacks[1][idx] += 1ULL << (idx - 9);
         }
         if (i < 7) {
+          // EAST
           pawn_attacks[0][idx] += 1ULL << (idx + 9);
           pawn_attacks[1][idx] += 1ULL << (idx - 7);
         }

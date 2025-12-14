@@ -1,5 +1,7 @@
+#include "move.h"
 #include "move_utility.h"
 #include "position.h"
+#include <charconv>
 #include <cstdint>
 #include <iostream>
 
@@ -17,10 +19,6 @@ public:
   }
 
 private:
-
-  void generate_pawn_moves() {
-
-  }
 
   // "Us" is the side to move
   template<uint8_t Us>
@@ -136,6 +134,106 @@ private:
         pop_bit(attacks, to_sq);
         move_list[count] = Move(from_sq, to_sq);
         count++;
+      }
+    }
+  }
+
+  template<uint8_t Us>
+  void generate_pawn_moves(const Position& pos) {
+
+    constexpr uint8_t Them = (Us == WHITE) ? BLACK : WHITE;
+    constexpr uint64_t PromotionRank = (Us == WHITE) ? RANK_8 : RANK_1;
+    constexpr uint64_t DoublePushRank = (Us == WHITE) ? RANK_4 : RANK_5;
+
+    uint64_t pawns = pos.all_piece_bitboards[WHITE_PAWN + Us];
+    uint64_t enemies = pos.occupancy_bitboards[Them];
+
+    constexpr int8_t shift = (Us == WHITE) ? 8 : -8;
+
+    // Single Push
+    uint64_t single_pushes = pos.all_piece_bitboards[WHITE_PAWN + Us] << shift;
+    single_pushes &= ~pos.total_bb;
+    uint64_t push_loop = single_pushes;
+    
+    while(push_loop) {
+      uint8_t to_sq = get_lsbit_index(push_loop);
+      pop_bit(push_loop, to_sq);
+      uint8_t from_sq = to_sq - shift;
+
+      // Check promotion
+      if (1ULL << to_sq & PromotionRank) {
+        move_list[count++] = Move(from_sq, to_sq,PROMO_QUEEN);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_KNIGHT);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_ROOK);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_BISHOP);
+      } else {
+        move_list[count++] = Move(from_sq, to_sq);
+      }
+    }
+
+    // Double Push
+    uint64_t double_pushes = single_pushes << shift;
+    double_pushes &= DoublePushRank;
+    double_pushes &= ~pos.total_bb;
+
+    while(double_pushes) {
+      uint8_t to_sq = get_lsbit_index(double_pushes);
+      pop_bit(double_pushes, to_sq);
+      uint8_t from_sq = to_sq - shift*2;
+
+      move_list[count++] = Move(from_sq, to_sq);
+    }
+
+    // Capture
+    uint64_t capture_right = (Us == WHITE) ? ((pawns & ~FILE_H) << 9) :
+                                             ((pawns & ~FILE_A) >> 9);
+    capture_right &= enemies;
+
+    while (capture_right) {
+      uint8_t to_sq = get_lsbit_index(capture_right);
+      pop_bit(capture_right, to_sq);
+      uint8_t from_sq = (Us == WHITE) ? (to_sq - 9) : (to_sq + 9);
+
+      // Check promotion
+      if (1ULL << to_sq & PromotionRank) {
+        move_list[count++] = Move(from_sq, to_sq,PROMO_QUEEN);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_KNIGHT);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_ROOK);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_BISHOP);
+      } else {
+        move_list[count++] = Move(from_sq, to_sq);
+      }
+    }
+
+    uint64_t capture_left = (Us == WHITE) ? ((pawns & ~FILE_A) << 7) :
+                                             ((pawns & ~FILE_H) >> 7);
+    capture_left &= enemies;
+
+    while (capture_left) {
+      uint8_t to_sq = get_lsbit_index(capture_left);
+      pop_bit(capture_left, to_sq);
+      uint8_t from_sq = (Us == WHITE) ? (to_sq - 7) : (to_sq + 7);
+
+      // Check promotion
+      if (1ULL << to_sq & PromotionRank) {
+        move_list[count++] = Move(from_sq, to_sq,PROMO_QUEEN);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_KNIGHT);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_ROOK);
+        move_list[count++] = Move(from_sq, to_sq,PROMO_BISHOP);
+      } else {
+        move_list[count++] = Move(from_sq, to_sq);
+      }
+    }
+
+    // En Passant
+    if (pos.en_passant_sq != NO_PIECE) {
+      uint64_t ep_capturing = PAWN_ATTACKS[Them][pos.en_passant_sq];
+      ep_capturing &= pawns;
+
+      while (ep_capturing) {
+        uint8_t from_sq = get_lsbit_index(ep_capturing);
+        pop_bit(ep_capturing, from_sq);
+        move_list[count++] = Move(from_sq, pos.en_passant_sq, EN_PASSANT);
       }
     }
   }

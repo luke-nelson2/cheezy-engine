@@ -1,6 +1,17 @@
 #pragma once
 #include <cstdint>
 
+enum Flag : uint8_t {
+  NORMAL_MOVE,
+  PROMO_KNIGHT,
+  PROMO_BISHOP,
+  PROMO_ROOK,
+  PROMO_QUEEN,
+  CASTLE_KINGSIDE,
+  CASTLE_QUEENSIDE,
+  EN_PASSANT
+};
+
 struct Move {
   uint16_t move_data;
 
@@ -24,8 +35,12 @@ struct Move {
 
   // FLAGS
   //   0 - NORMAL MOVE
-  //   1 - PROMOTION
-  //   2 - CASTLING
-  //   3 - EN PASSANT
-  //   PIECES TO PROMOTE TO: KNIGHT, BISHOP, ROOK, QUEEN
+  //   1-4 - PROMOTION
+  //   1 - KNIGHT
+  //   2 - BISHOP
+  //   3 - ROOK
+  //   4 - QUEEN
+  //   5 - CASTLE KINGSIDE
+  //   6 - CASTLE QUEENSIDE
+  //   7 - EN PASSANT
 };

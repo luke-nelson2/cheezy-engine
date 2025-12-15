@@ -171,39 +171,28 @@ private:
     // Does not pass through or finish on a square that is attacked
 
     // Kingside Castle
-    const uint8_t kingside_castle = (Us == WHITE) ? pos.castling_rights & 1 : pos.castling_rights & 4;
-    const uint8_t queenside_castle = (Us == WHITE) ? pos.castling_rights & 2 : pos.castling_rights & 8;
-    constexpr uint64_t kingside_mask = (Us == WHITE) ? 0x60 : 0x60'00'00'00'00'00'00'00;
-    constexpr uint8_t king_square = (Us == WHITE) ? 4 : 60;
+    const uint8_t kingside_castle = (Us == WHITE) ? pos.castling_rights & 1U : pos.castling_rights & 4U;
+    const uint8_t queenside_castle = (Us == WHITE) ? pos.castling_rights & 2U : pos.castling_rights & 8U;
+    constexpr uint64_t kingside_mask = (Us == WHITE) ? 0x60ULL : 0x60'00'00'00'00'00'00'00ULL;
+    constexpr uint64_t queenside_mask = (Us == WHITE) ? 0xEULL : 0x0E'00'00'00'00'00'00'00ULL;
+    constexpr uint8_t king_square = (Us == WHITE) ? 4U : 60U;
     bool fail = 0;
 
     if (kingside_castle && !(pos.total_bb & kingside_mask)) {
       for (uint8_t square = king_square; square < king_square + 3; square++) {
-        // Bishop attack
-        uint64_t bishop_attack = get_bishop_attacks(square, pos.total_bb) & 
-          (pos.all_piece_bitboards[WHITE_BISHOP + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
-
-        uint64_t rook_attack = get_rook_attacks(square, pos.total_bb) & 
-          (pos.all_piece_bitboards[WHITE_ROOK + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
-
-        // Knight attack
-        uint64_t knight_attack = KNIGHT_MOVES[square] & pos.all_piece_bitboards[WHITE_KNIGHT + Them];
-
-        // Pawn attack
-        uint64_t pawn_attack = PAWN_ATTACKS[Us][square] & pos.all_piece_bitboards[WHITE_PAWN + Them];
-
-        // King attack
-        uint64_t king_attack = KING_MOVES[square] & pos.all_piece_bitboards[WHITE_KING + Them]; 
-
-        if (bishop_attack | rook_attack | knight_attack | pawn_attack | king_attack) {
-          fail = 1;
-          break;
-        }
+        if (is_square_attacked(pos, square, Us)) fail = 1; break;
       }
 
-      if (!fail) {
-        move_list[count++] = Move(king_square, king_square + 2, CASTLE_KINGSIDE);
+      if (!fail) move_list[count++] = Move(king_square, king_square + 2, CASTLE_KINGSIDE);
+    }
+
+    // Queenside Castle
+    if (queenside_castle && !(pos.total_bb & queenside_mask)) {
+      for (uint8_t square = king_square; square > king_square - 4; square++) {
+        if (is_square_attacked(pos, square, Us)) fail = 1; break;
       }
+
+      if (!fail) move_list[count++] Move(king_square, king_square - 2, CASTLE_QUEENSIDE);
     }
 
   }

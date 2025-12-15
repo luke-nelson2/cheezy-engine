@@ -123,6 +123,7 @@ public:
 
     uint8_t from_sq = move.get_from_sq();
     uint8_t to_sq = move.get_to_sq();
+    uint8_t flags = move.get_flags();
     uint8_t moving_piece_type = piece_list[from_sq];
     uint8_t captured_piece_type = piece_list[to_sq];
     uint64_t from_bit = 1ULL << from_sq;
@@ -150,8 +151,6 @@ public:
       occupancy_bitboards[captured_piece_type & 1] ^= to_bit;
     }
 
-    total_bb = occupancy_bitboards[0] | occupancy_bitboards[1];
-
     // Update Piece Lists
     piece_list[from_sq] = NO_PIECE;
     piece_list[to_sq] = moving_piece_type;
@@ -161,12 +160,59 @@ public:
     castling_rights &= ~MoveUtility::CASTLING_RIGHTS_UPDATE[to_sq];
 
     en_passant_sq = 64;
-    if (moving_piece_type >> 1 == PAWN) {
+    if ((moving_piece_type >> 1) == PAWN) {
       if (std::abs((int)to_sq - (int)from_sq) == 16) {
         en_passant_sq = (from_sq + to_sq) >> 1;
       } 
     }
 
+    if (flags) {
+      if (flags == CASTLE_KINGSIDE) {
+
+        uint64_t rook_mask = (1ULL << (to_sq - 1)) | (1ULL << (to_sq + 1));
+
+        all_piece_bitboards[WHITE_ROOK + side_to_move] ^= rook_mask;
+        occupancy_bitboards[side_to_move] ^= rook_mask;
+
+        piece_list[to_sq + 1] = NO_PIECE;
+        piece_list[to_sq - 1] = WHITE_ROOK + side_to_move;
+
+      } else if (flags == CASTLE_QUEENSIDE) {
+
+        uint64_t rook_mask = (1ULL << (to_sq - 2)) | (1ULL << (to_sq + 1));
+
+        all_piece_bitboards[WHITE_ROOK + side_to_move] ^= rook_mask;
+        occupancy_bitboards[side_to_move] ^= rook_mask;
+
+        piece_list[to_sq - 2] = NO_PIECE;
+        piece_list[to_sq + 1] = WHITE_ROOK + side_to_move;
+
+      } else if (flags == EN_PASSANT) {
+
+        uint8_t captured_sq = (side_to_move == WHITE) ? to_sq - 8 : to_sq + 8;
+        uint64_t captured_bb = (1ULL << captured_sq);
+
+        all_piece_bitboards[BLACK_PAWN - side_to_move] ^= captured_bb;
+        occupancy_bitboards[BLACK - side_to_move] ^= captured_bb;
+        piece_list[captured_sq] = NO_PIECE;
+
+      } else if (flags >= PROMO_KNIGHT && flags <= PROMO_QUEEN) {
+
+        uint8_t promo_piece_type = 0;
+        if (flags == PROMO_KNIGHT) promo_piece_type = WHITE_KNIGHT + side_to_move;
+        if (flags == PROMO_BISHOP) promo_piece_type = WHITE_BISHOP + side_to_move;
+        if (flags == PROMO_ROOK) promo_piece_type = WHITE_ROOK + side_to_move;
+        if (flags == PROMO_QUEEN) promo_piece_type = WHITE_QUEEN + side_to_move;
+
+        all_piece_bitboards[moving_piece_type] ^= to_bit;
+        all_piece_bitboards[promo_piece_type] ^= to_bit;
+
+        piece_list[to_sq] = promo_piece_type;
+      }
+    }
+
+    total_bb = occupancy_bitboards[WHITE] | occupancy_bitboards[BLACK];
+    side_to_move ^= 1;
     ply++;
   }
 

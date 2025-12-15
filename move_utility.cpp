@@ -515,8 +515,6 @@ std::array<MoveUtility::MagicEntry, 64> init_bishop_magic_entry() {
 
 }
 
-
-
 namespace MoveUtility {
 
 const std::array<uint64_t, 64> KNIGHT_MOVES = init_knight_table();

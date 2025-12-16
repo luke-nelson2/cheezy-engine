@@ -1,4 +1,5 @@
-#include "move.h"
+// #include "move.h"
+// #include "move_utility.h"
 #include "move_utility.h"
 #include "position.h"
 #include <cstdint>
@@ -13,13 +14,53 @@ public:
   std::array<Move, 256> move_list;
   uint8_t count;
 
-  void generate_moves(const Position& pos) {
+  MoveGenerator() : count(0) {}
 
+  void generate(const Position& pos) {
+    count = 0;
+    if (pos.side_to_move == WHITE) {
+      generate_all_moves<WHITE>(pos);
+    } else {
+      generate_all_moves<BLACK>(pos);
+    }
+  }
+
+  bool is_square_attacked(const Position& pos, uint8_t square, uint8_t Us) {
+    uint8_t Them = (Us == WHITE) ? BLACK : WHITE;
+
+    uint64_t bishop_attack = get_bishop_attacks(square, pos.total_bb) & 
+      (pos.all_piece_bitboards[WHITE_BISHOP + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
+
+    uint64_t rook_attack = get_rook_attacks(square, pos.total_bb) & 
+      (pos.all_piece_bitboards[WHITE_ROOK + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
+
+    // Knight attack
+    uint64_t knight_attack = KNIGHT_MOVES[square] & pos.all_piece_bitboards[WHITE_KNIGHT + Them];
+
+    // Pawn attack
+    uint64_t pawn_attack = PAWN_ATTACKS[Us][square] & pos.all_piece_bitboards[WHITE_PAWN + Them];
+
+    // King attack
+    uint64_t king_attack = KING_MOVES[square] & pos.all_piece_bitboards[WHITE_KING + Them]; 
+
+    if (bishop_attack | rook_attack | knight_attack | pawn_attack | king_attack) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
 private:
 
-  
+  template<uint8_t Us>
+  void generate_all_moves(const Position& pos) {
+    generate_pawn_moves<Us>(pos);
+    generate_knight_moves<Us>(pos);
+    generate_bishop_moves<Us>(pos);
+    generate_rook_moves<Us>(pos);
+    generate_queen_moves<Us>(pos);
+    generate_king_moves<Us>(pos);
+  }
 
   // "Us" is the side to move
   template<uint8_t Us>
@@ -104,7 +145,7 @@ private:
 
       uint8_t from_sq = get_lsbit_index(temp_queen_bb);
       pop_bit(temp_queen_bb, from_sq);
-      uint64_t attacks = get_rook_attacks(from_sq, pos.total_bb) &
+      uint64_t attacks = get_rook_attacks(from_sq, pos.total_bb) |
                          get_bishop_attacks(from_sq, pos.total_bb);
       attacks &= ~pos.occupancy_bitboards[WHITE + Us];
       while (attacks) {
@@ -116,30 +157,7 @@ private:
     }
   }
 
-  bool is_square_attacked(const Position& pos, uint8_t square, uint8_t Us) {
-    uint8_t Them = (Us == WHITE) ? BLACK : WHITE;
-
-    uint64_t bishop_attack = get_bishop_attacks(square, pos.total_bb) & 
-      (pos.all_piece_bitboards[WHITE_BISHOP + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
-
-    uint64_t rook_attack = get_rook_attacks(square, pos.total_bb) & 
-      (pos.all_piece_bitboards[WHITE_ROOK + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
-
-    // Knight attack
-    uint64_t knight_attack = KNIGHT_MOVES[square] & pos.all_piece_bitboards[WHITE_KNIGHT + Them];
-
-    // Pawn attack
-    uint64_t pawn_attack = PAWN_ATTACKS[Us][square] & pos.all_piece_bitboards[WHITE_PAWN + Them];
-
-    // King attack
-    uint64_t king_attack = KING_MOVES[square] & pos.all_piece_bitboards[WHITE_KING + Them]; 
-
-    if (bishop_attack | rook_attack | knight_attack | pawn_attack | king_attack) {
-      return false;
-    } else {
-      return true;
-    }
-  }
+  
 
   template<uint8_t Us>
   void generate_king_moves(const Position& pos) {
@@ -192,7 +210,7 @@ private:
         if (is_square_attacked(pos, square, Us)) fail = 1; break;
       }
 
-      if (!fail) move_list[count++] Move(king_square, king_square - 2, CASTLE_QUEENSIDE);
+      if (!fail) move_list[count++] = Move(king_square, king_square - 2, CASTLE_QUEENSIDE);
     }
 
   }
@@ -203,14 +221,19 @@ private:
     constexpr uint8_t Them = (Us == WHITE) ? BLACK : WHITE;
     constexpr uint64_t PromotionRank = (Us == WHITE) ? RANK_8 : RANK_1;
     constexpr uint64_t DoublePushRank = (Us == WHITE) ? RANK_4 : RANK_5;
+    constexpr uint8_t shift = (Us == WHITE) ? 8 : -8;
 
     uint64_t pawns = pos.all_piece_bitboards[WHITE_PAWN + Us];
     uint64_t enemies = pos.occupancy_bitboards[Them];
 
-    constexpr int8_t shift = (Us == WHITE) ? 8 : -8;
-
     // Single Push
-    uint64_t single_pushes = pos.all_piece_bitboards[WHITE_PAWN + Us] << shift;
+    uint64_t single_pushes = 0ULL;
+    if constexpr (Us == WHITE) {
+      single_pushes = pawns << 8;
+    } else {
+      single_pushes = pawns >> 8;
+    }
+
     single_pushes &= ~pos.total_bb;
     uint64_t push_loop = single_pushes;
     
@@ -231,7 +254,14 @@ private:
     }
 
     // Double Push
-    uint64_t double_pushes = single_pushes << shift;
+    uint64_t double_pushes = 0ULL;
+
+    if constexpr (Us == WHITE) {
+      double_pushes = single_pushes << 8;
+    } else {
+      double_pushes = single_pushes >> 8;
+    }
+
     double_pushes &= DoublePushRank;
     double_pushes &= ~pos.total_bb;
 
@@ -285,7 +315,7 @@ private:
     }
 
     // En Passant
-    if (pos.en_passant_sq != NO_PIECE) {
+    if (pos.en_passant_sq != NO_SQUARE) {
       uint64_t ep_capturing = PAWN_ATTACKS[Them][pos.en_passant_sq];
       ep_capturing &= pawns;
 

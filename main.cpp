@@ -20,6 +20,10 @@ void print_bitboard(uint64_t bb) {
 }
 
 int main() {
-  print_bitboard(FILE_E);
+  uint64_t test_bb = 0xFF'FF'00'00'00'04'FB'FF;
+  print_bitboard(test_bb);
+  uint64_t att = get_bishop_attacks(3, test_bb);
+  print_bitboard(att);
+
   return 0;
 }

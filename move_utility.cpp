@@ -273,15 +273,27 @@ std::array<std::array<uint64_t, 64>, 2> init_pawn_attack_table() {
       idx = j * 8 + i;
       pawn_attacks[0][idx] = 0;
       pawn_attacks[1][idx] = 0;
-      if (j > 0 && j < 7) {
+      // WHITE
+      if (j < 7) {
         if (i > 0) {
           // WEST
           pawn_attacks[0][idx] += 1ULL << (idx + 7);
-          pawn_attacks[1][idx] += 1ULL << (idx - 9);
         }
         if (i < 7) {
           // EAST
           pawn_attacks[0][idx] += 1ULL << (idx + 9);
+        }
+
+        // NEED FOR ALL RANKS!
+      }
+      // BLACK
+      if (j > 0) {
+        if (i > 0) {
+          // WEST
+          pawn_attacks[1][idx] += 1ULL << (idx - 9);
+        }
+        if (i < 7) {
+          // EAST
           pawn_attacks[1][idx] += 1ULL << (idx - 7);
         }
       }

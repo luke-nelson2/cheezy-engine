@@ -194,11 +194,15 @@ private:
     constexpr uint64_t kingside_mask = (Us == WHITE) ? 0x60ULL : 0x60'00'00'00'00'00'00'00ULL;
     constexpr uint64_t queenside_mask = (Us == WHITE) ? 0xEULL : 0x0E'00'00'00'00'00'00'00ULL;
     constexpr uint8_t king_square = (Us == WHITE) ? 4U : 60U;
-    bool fail = 0;
+    bool fail;
 
     if (kingside_castle && !(pos.total_bb & kingside_mask)) {
-      for (uint8_t square = king_square; square < king_square + 3; square++) {
-        if (is_square_attacked(pos, square, Us)) fail = 1; break;
+      fail = false;
+      for (uint8_t square = king_square; square < (king_square + 3); square++) {
+        if (is_square_attacked(pos, square, Us)) {
+          fail = true;
+          break;
+        }
       }
 
       if (!fail) move_list[count++] = Move(king_square, king_square + 2, CASTLE_KINGSIDE);
@@ -206,8 +210,12 @@ private:
 
     // Queenside Castle
     if (queenside_castle && !(pos.total_bb & queenside_mask)) {
-      for (uint8_t square = king_square; square > king_square - 4; square++) {
-        if (is_square_attacked(pos, square, Us)) fail = 1; break;
+      fail = false;
+      for (uint8_t square = king_square; square > king_square - 3; square--) {
+        if (is_square_attacked(pos, square, Us)) {
+          fail = true;
+          break;
+        }
       }
 
       if (!fail) move_list[count++] = Move(king_square, king_square - 2, CASTLE_QUEENSIDE);

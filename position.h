@@ -24,10 +24,61 @@ public:
   uint8_t castling_rights;
   uint8_t en_passant_sq;
   bool side_to_move;
+  // If halfmove_clock reaches 100, and side_to_move has at least 1 legal move,
+  // Draw score assigned to that node
+  uint8_t halfmove_clock;
+  uint16_t fullmove_count;
   uint16_t ply;
 
   std::array<UndoInfo, 2048> history_stack;
   std::array<uint8_t, 64> piece_list;
+
+  // FEN constructor
+  Position(std::string fen_string) {
+    // 6 fields separated by spaces
+    // In order:
+    // Piece placement:
+    //   ranks are separated by forward slashes '/'
+    //   from rank 8 to rank 1 and left to right
+    //   pnbrqk
+    //   white pieces are lower case, black uppercase
+    //   number represent number of white spaces
+    // side to move: either w or b (white or black)
+    // castling ability: 
+    //   if no one can castle, '-' is used
+    //   KQkq (once again, lowercase is white and uppercase is black)
+    // en passant target square:
+    //   '-' is used if there is no ep square
+    //   file and rank ie. a1, a2, g3, c7, etc.
+    // half move clock:
+    //   decimal number of half moves
+    //   resets to zero after a pawn push or piece capture
+    // Full move counter:
+    //   starts at 1 and increments after each black move
+    uint8_t piece_str_len = fen_string.find(' ');
+    std::string piece_str = fen_string.substr(0,piece_str_len);
+    char side_char = fen_string[piece_str_len+1];
+    uint8_t castle_idx = piece_str_len + 3;
+    uint8_t ep_idx = fen_string.find(' ', castle_idx) + 1;
+    uint8_t hm_idx = fen_string.find(' ', ep_idx) + 1;
+    uint8_t fm_idx = fen_string.find(' ', hm_idx) + 1;
+
+    std::string castle_string = fen_string.substr(castle_idx, ep_idx - castle_idx - 1);
+    std::string ep_string = fen_string.substr(ep_idx, hm_idx - ep_idx - 1);
+    std::string hm_string = fen_string.substr(hm_idx, fm_idx - hm_idx - 1);
+    std::string fm_string = fen_string.substr(fm_idx);
+    set_pieces(piece_str);
+    set_castling(castle_string);
+    set_ep(ep_string);
+    halfmove_clock = std::stoi(hm_string);
+    fullmove_count = std::stoi(fm_string);
+    
+    if (side_char == 'w') {
+      side_to_move = WHITE;
+    } else {
+      side_to_move = BLACK;
+    }
+  }
 
   Position() {
     all_piece_bitboards[WHITE_PAWN] = 0xFF00ULL;
@@ -118,6 +169,33 @@ public:
     // BLACK KING
     piece_list[60] = BLACK_KING;
   }
+
+  void print_position() {
+  for (int i = 7; i >= 0; i--) {
+    for (int j = 0; j <= 7; j++) {
+      uint8_t square = i * 8 + j;
+      std::string square_str = ". ";
+
+      if (piece_list[square] == BLACK_PAWN) square_str = "p ";
+      if (piece_list[square] == BLACK_KNIGHT) square_str = "n ";
+      if (piece_list[square] == BLACK_BISHOP) square_str = "b ";
+      if (piece_list[square] == BLACK_ROOK) square_str = "r ";
+      if (piece_list[square] == BLACK_QUEEN) square_str = "q ";
+      if (piece_list[square] == BLACK_KING) square_str = "k ";
+
+      if (piece_list[square] == WHITE_PAWN) square_str = "P ";
+      if (piece_list[square] == WHITE_KNIGHT) square_str = "N ";
+      if (piece_list[square] == WHITE_BISHOP) square_str = "B ";
+      if (piece_list[square] == WHITE_ROOK) square_str = "R ";
+      if (piece_list[square] == WHITE_QUEEN) square_str = "Q ";
+      if (piece_list[square] == WHITE_KING) square_str = "K ";
+
+      std::cout << square_str;
+    }
+    std::cout << std::endl;
+  }
+  std::cout << "\n";
+}
   
   // Updates all relevant bitboards according to move
   // Assumes legal move
@@ -296,4 +374,91 @@ public:
 
     ply--;
   }
+
+private:
+  void set_pieces(std::string piece_str) {
+
+    all_piece_bitboards.fill(0);
+    occupancy_bitboards.fill(0);
+    total_bb = 0;
+
+    piece_list.fill(NO_PIECE);
+
+    uint8_t str_length = piece_str.size();
+    uint8_t rank = 7;
+    uint8_t file = 0;
+
+    for (int i = 0; i < str_length; i++) {
+      
+      uint8_t incr = 1;
+      char piece_char = piece_str[i];
+
+      if (piece_char == '/') {
+        rank--;
+        file = 0;
+        continue;
+      }
+
+      uint8_t square = rank * 8 + file;
+      uint64_t square_bit = (1ULL << square);
+      uint8_t piece_type = NO_PIECE;
+
+      if (piece_char == 'p') piece_type = BLACK_PAWN;
+      if (piece_char == 'n') piece_type = BLACK_KNIGHT;
+      if (piece_char == 'b') piece_type = BLACK_BISHOP;
+      if (piece_char == 'r') piece_type = BLACK_ROOK;
+      if (piece_char == 'q') piece_type = BLACK_QUEEN;
+      if (piece_char == 'k') piece_type = BLACK_KING;
+
+      if (piece_char == 'P') piece_type = WHITE_PAWN;
+      if (piece_char == 'N') piece_type = WHITE_KNIGHT;
+      if (piece_char == 'B') piece_type = WHITE_BISHOP;
+      if (piece_char == 'R') piece_type = WHITE_ROOK;
+      if (piece_char == 'Q') piece_type = WHITE_QUEEN;
+      if (piece_char == 'K') piece_type = WHITE_KING;
+
+      if (piece_char >= '0' && piece_char <= '9') {
+        incr = piece_char - '0';
+      }
+
+      if (piece_type != NO_PIECE) {
+        all_piece_bitboards[piece_type] |= square_bit;
+        occupancy_bitboards[piece_type & 1U] |= square_bit;
+        piece_list[square] = piece_type;
+      }
+
+      file += incr;
+    }
+
+    total_bb = occupancy_bitboards[WHITE] | occupancy_bitboards[BLACK];
+  }
+
+  void set_castling(std::string castle_string) {
+
+    castling_rights = 0U;
+    uint8_t str_len = castle_string.size();
+
+    for (int i = 0; i < str_len; i++) {
+      if (castle_string[i] == 'K') castling_rights |= 1U;
+      if (castle_string[i] == 'Q') castling_rights |= 2U;
+      if (castle_string[i] == 'k') castling_rights |= 4U;
+      if (castle_string[i] == 'q') castling_rights |= 8U;
+    }
+
+  }
+
+  void set_ep(std::string ep_string) {
+
+    en_passant_sq = MoveUtility::NO_SQUARE;
+
+    if (ep_string[0] != '-') {
+
+      uint8_t file = ep_string[0] - 'a';
+      uint8_t rank = ep_string[1] - '0';
+      en_passant_sq = rank*8 + file;
+
+    }
+
+  }
+
 };

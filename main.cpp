@@ -1,5 +1,5 @@
 #include "move_utility.h"
-// #include "position.h"
+#include "position.h"
 #include <iostream>
 #include <cstdint>
 
@@ -20,9 +20,12 @@ void print_bitboard(uint64_t bb) {
 }
 
 int main() {
-  uint64_t test_bb = 0xFF'FF'00'00'00'04'FB'FF;
-  print_bitboard(test_bb);
-  uint64_t att = get_bishop_attacks(3, test_bb);
+  // std::string fen_string = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+  // Position test_pos(fen_string);
+  // test_pos.print_position();
+  // std::cout << (int)test_pos.castling_rights << std::endl;
+
+  uint64_t att = MoveUtility::PAWN_ATTACKS[0][50];
   print_bitboard(att);
 
   return 0;

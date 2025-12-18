@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 
 enum Piece : uint8_t {

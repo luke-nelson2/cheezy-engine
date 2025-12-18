@@ -6,7 +6,7 @@
 #include "move_utility.h"
 #include "position.h"
 
-std::string move_string(const Move& move) {
+std::string move_to_string(const Move& move) {
   std::string move_str = "";
   uint8_t from_sq = move.get_from_sq();
   uint8_t to_sq = move.get_to_sq();
@@ -78,7 +78,7 @@ void divide(Position& pos, uint8_t depth) {
         total += branch_nodes;
 
         // Print the move and its count
-        std::cout << move_string(move)
+        std::cout << move_to_string(move)
                   << ": " << branch_nodes << std::endl;
 
         pos.unmake_move();

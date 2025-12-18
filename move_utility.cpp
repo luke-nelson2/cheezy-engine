@@ -10,20 +10,9 @@ namespace {
 #define pop_bit(bitboard, square)                                              \
   (get_bit(bitboard, square) ? (bitboard ^= (1ULL << square)) : 0)
 
-uint8_t count_bits(uint64_t bitboard) {
-  uint8_t count = 0;
-
-  while (bitboard) {
-    count++;
-    bitboard &= bitboard - 1;
-  }
-
-  return count;
-}
-
 uint8_t get_ls1b_index(uint64_t bitboard) {
   if (bitboard != 0) {
-    return count_bits((bitboard & (~bitboard + 1)) - 1);
+    return MoveUtility::count_bits((bitboard & (~bitboard + 1)) - 1);
   } else {
     return 64;
   }

@@ -13,6 +13,8 @@ struct UndoInfo {
   uint8_t captured_piece_type;
   uint8_t castling_rights; // 4 bits: white: king and queen side, black: king and queen side
   uint8_t en_passant_sq;
+  uint8_t halfmove_clock;
+  // uint8_t zobrist_key;
 };
 
 class Position{
@@ -35,26 +37,7 @@ public:
 
   // FEN constructor
   Position(std::string fen_string) {
-    // 6 fields separated by spaces
-    // In order:
-    // Piece placement:
-    //   ranks are separated by forward slashes '/'
-    //   from rank 8 to rank 1 and left to right
-    //   pnbrqk
-    //   white pieces are lower case, black uppercase
-    //   number represent number of white spaces
-    // side to move: either w or b (white or black)
-    // castling ability: 
-    //   if no one can castle, '-' is used
-    //   KQkq (once again, lowercase is white and uppercase is black)
-    // en passant target square:
-    //   '-' is used if there is no ep square
-    //   file and rank ie. a1, a2, g3, c7, etc.
-    // half move clock:
-    //   decimal number of half moves
-    //   resets to zero after a pawn push or piece capture
-    // Full move counter:
-    //   starts at 1 and increments after each black move
+
     uint8_t piece_str_len = fen_string.find(' ');
     std::string piece_str = fen_string.substr(0,piece_str_len);
     char side_char = fen_string[piece_str_len+1];
@@ -67,9 +50,11 @@ public:
     std::string ep_string = fen_string.substr(ep_idx, hm_idx - ep_idx - 1);
     std::string hm_string = fen_string.substr(hm_idx, fm_idx - hm_idx - 1);
     std::string fm_string = fen_string.substr(fm_idx);
+
     set_pieces(piece_str);
     set_castling(castle_string);
     set_ep(ep_string);
+    
     halfmove_clock = std::stoi(hm_string);
     fullmove_count = std::stoi(fm_string);
     
@@ -220,6 +205,7 @@ public:
     history_stack[ply].move = move;
     history_stack[ply].captured_piece_type = captured_piece_type;
     history_stack[ply].en_passant_sq = en_passant_sq;
+    history_stack[ply].halfmove_clock = halfmove_clock;
 
     // Move moving piece
     all_piece_bitboards[moving_piece_type] ^= move_mask;
@@ -287,6 +273,12 @@ public:
 
         piece_list[to_sq] = promo_piece_type;
       }
+    }
+
+    if ((moving_piece_type < WHITE_KNIGHT) || (captured_piece_type != NO_PIECE)) {
+      halfmove_clock = 0;
+    } else {
+      halfmove_clock++;
     }
 
     total_bb = occupancy_bitboards[WHITE] | occupancy_bitboards[BLACK];
@@ -370,6 +362,7 @@ public:
       }
     }
 
+    halfmove_clock = move_record.halfmove_clock;
     total_bb = occupancy_bitboards[WHITE] | occupancy_bitboards[BLACK];
 
     ply--;

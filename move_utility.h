@@ -76,4 +76,15 @@ inline uint64_t get_bishop_attacks(uint8_t square, uint64_t occupancy) {
 inline uint8_t get_lsbit_index(uint64_t bitboard) {
   return __builtin_ctzll(bitboard);
 }
+
+inline uint8_t count_bits(uint64_t bitboard) {
+  // uint8_t count = 0;
+
+  // while (bitboard) {
+  //   count++;
+  //   bitboard &= bitboard - 1;
+  // }
+
+  return (uint8_t)__builtin_popcountll(bitboard);
+}
 } // namespace MoveUtility

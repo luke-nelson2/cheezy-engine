@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <chrono>
 #include "move_generator.h"
@@ -93,12 +94,12 @@ void divide(Position& pos, uint8_t depth) {
 // 
 
 int main() {
-  std::string fen_string = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ";
-  Position pos;
+  std::string fen_string = "r4rk1/3nqp1p/6p1/p1Pp4/PPn2P2/2N4Q/5BPP/R4RK1 b - - 1 21";
+  Position pos(fen_string);
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  uint64_t nodes = perft(pos, 6);
+  divide(pos, 4);
 
   // End timing
   auto end = std::chrono::high_resolution_clock::now();
@@ -107,15 +108,16 @@ int main() {
   std::chrono::duration<double> duration = end - start;
   double seconds = duration.count();
 
-  std::cout << "Time taken: " << seconds << " seconds" << std::endl;
+  // std::cout << "Number of nodes: " << nodes << std::endl;
+  // std::cout << "Time taken: " << seconds << " seconds" << std::endl;
 
-  // Output the result of x / time
-  if (seconds > 0) {
-    double result = nodes / seconds;
-    std::cout << "Result (x / time): " << result << std::endl;
-  } else {
-    std::cout << "Function was too fast to measure accurately." << std::endl;
-  }
+  // // Output the result of x / time
+  // if (seconds > 0) {
+  //   double result = nodes / seconds;
+  //   std::cout << "Result (x / time): " << result << std::endl;
+  // } else {
+  //   std::cout << "Function was too fast to measure accurately." << std::endl;
+  // }
 
   // std::cout << nodes << std::endl;
   return 0;

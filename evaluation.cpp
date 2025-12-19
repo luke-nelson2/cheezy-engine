@@ -1,4 +1,5 @@
 #include "evaluation.h"
+#include "piece.h"
 #include <cstdint>
 
 namespace Evaluation {
@@ -26,11 +27,7 @@ int32_t evaluate_position(const Position& pos) {
     int32_t piece_count = MoveUtility::count_bits(pos.all_piece_bitboards[piece]);
     
 
-    if (piece_side == pos.side_to_move) {
-      score += piece_count * piece_value;
-    } else {
-      score -= piece_count * piece_value;
-    }
+    score += piece_count * piece_value;
 
     // Positional Bonuses
     // WHILE POP
@@ -42,18 +39,18 @@ int32_t evaluate_position(const Position& pos) {
       uint8_t idx = MoveUtility::NO_SQUARE;
 
       if (piece_side == WHITE) {
-        idx = TABLE_IDX[square];
+        idx = square^56;
       } else {
         idx = square;
       }
 
-      if (piece_side == pos.side_to_move) {
-        score += PIECE_SQUARE_TABLES[piece_type][idx];
-      } else {
-        score -= PIECE_SQUARE_TABLES[piece_type][idx];
-      }
+      score += PIECE_SQUARE_TABLES[piece_type][idx];
     } 
 
+  }
+
+  if (pos.side_to_move == BLACK) {
+    score = -score;
   }
 
   return score;

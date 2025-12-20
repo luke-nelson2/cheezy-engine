@@ -21,7 +21,7 @@ public:
   static const int32_t LOSING_CAPTURE = -1'000'000;
   static const int32_t CASTLE_BONUS = 10'000;
   static const int32_t QUEEN_PROMO_BONUS = 7'000'000;
-  uint8_t count;
+  int count;
 
   MoveGenerator() : count(0) {}
 

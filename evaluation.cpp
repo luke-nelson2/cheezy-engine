@@ -1,33 +1,39 @@
 #include "evaluation.h"
+#include "move_utility.h"
 #include "piece.h"
 #include <cstdint>
 
 namespace Evaluation {
 
-// 4 situations
-// white is side to move: white pieces evald, black pieces evald
-//   if white pieces are evald they should be positive
-//   black pieces negative
+std::array<std::array<int, 64>, 6> init_tables(bool eg) {
+  std::array<std::array<int, 64>, 6> table;
+  uint8_t piece, sq;
+  for (piece = WHITE_PAWN; piece < NO_PIECE; piece+=2) {
+    for (sq = 0; sq < MoveUtility::NO_SQUARE; sq++) {
+      if (eg) {
+        table[piece][sq] = EG_PIECE_VALUES[piece] + eg_piece_tables[piece][sq^56];
+        table[piece+1][sq] = EG_PIECE_VALUES[piece] + eg_piece_tables[piece][sq]; 
+      } else {
+        table[piece][sq] = MG_PIECE_VALUES[piece] + mg_piece_tables[piece][sq^56]; 
+        table[piece+1][sq] = MG_PIECE_VALUES[piece] + mg_piece_tables[piece][sq]; 
+      }
+    }
+  }
+  return table;
+};
 
-// black is side to move: white pieces evald, black pieces evald
-//   if white pieces are evald they should be negative
-//   black pieces positive
+const std::array<std::array<int, 64>, 6> eg_table = init_tables(1);
+const std::array<std::array<int, 64>, 6> mg_table = init_tables(0);
 
-// problem: side_to_move changes in the search
-//   need a variable to represent who is moving at the TOP of the search tree
 int32_t evaluate_position(const Position& pos) {
 
-  int32_t score = 0;
+  int32_t mg_score = 0;
+  int32_t eg_score = 0;
+  int32_t game_phase = 0;
 
   // WHITE PIECES
   for (uint8_t piece = WHITE_PAWN; piece < BLACK_KING; piece+=2) {
     // array and indexing?
-    uint8_t piece_type = piece >> 1;
-    uint8_t piece_side = piece & 1U;
-    int32_t piece_value = PIECE_VALUES[piece_type];
-    int32_t piece_count = MoveUtility::count_bits(pos.all_piece_bitboards[piece]);
-    
-    score += piece_count * piece_value;
 
     // Positional Bonuses
     // WHILE POP
@@ -36,9 +42,10 @@ int32_t evaluate_position(const Position& pos) {
       
       uint8_t square = MoveUtility::get_lsbit_index(piece_bb);
       pop_bit(piece_bb, square);
-      uint8_t idx = square^56;
 
-      score += PIECE_SQUARE_TABLES[piece_type][idx];
+      mg_score += mg_table[piece][square];
+      eg_score += mg_table[piece][square];
+      game_phase += GAME_PHASE_INCREMENT[piece];
     } 
 
   }
@@ -46,12 +53,6 @@ int32_t evaluate_position(const Position& pos) {
   // BLACK PIECES
   for (uint8_t piece = BLACK_PAWN; piece < NO_PIECE; piece+=2) {
     // array and indexing?
-    uint8_t piece_type = piece >> 1;
-    uint8_t piece_side = piece & 1U;
-    int32_t piece_value = PIECE_VALUES[piece_type];
-    int32_t piece_count = MoveUtility::count_bits(pos.all_piece_bitboards[piece]);
-    
-    score -= piece_count * piece_value;
 
     // Positional Bonuses
     // WHILE POP
@@ -60,16 +61,19 @@ int32_t evaluate_position(const Position& pos) {
       
       uint8_t square = MoveUtility::get_lsbit_index(piece_bb);
       pop_bit(piece_bb, square);
-      uint8_t idx = square;
 
-      score -= PIECE_SQUARE_TABLES[piece_type][idx];
+      mg_score -= mg_table[piece][square];
+      eg_score -= eg_table[piece][square];
+      game_phase += GAME_PHASE_INCREMENT[piece];
     } 
 
   }
 
-  if (pos.side_to_move == BLACK) {
-    score = -score;
-  }
+  int mg_phase = game_phase;
+  if (mg_phase > 256) mg_phase = 256;
+  int eg_phase = 256 - mg_phase;
+
+  int32_t score = ((mg_score * mg_phase + eg_score * eg_phase) >> 8);
 
   return score;
 

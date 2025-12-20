@@ -5,25 +5,26 @@
 
 namespace Evaluation {
 
-std::array<std::array<int, 64>, 6> init_tables(bool eg) {
-  std::array<std::array<int, 64>, 6> table;
+std::array<std::array<int, 64>, 12> init_tables(bool eg) {
+  std::array<std::array<int, 64>, 12> table;
   uint8_t piece, sq;
   for (piece = WHITE_PAWN; piece < NO_PIECE; piece+=2) {
+    uint8_t piece_type = piece >> 1;
     for (sq = 0; sq < MoveUtility::NO_SQUARE; sq++) {
       if (eg) {
-        table[piece][sq] = EG_PIECE_VALUES[piece] + eg_piece_tables[piece][sq^56];
-        table[piece+1][sq] = EG_PIECE_VALUES[piece] + eg_piece_tables[piece][sq]; 
+        table[piece][sq] = EG_PIECE_VALUES[piece_type] + eg_piece_tables[piece_type][sq^56];
+        table[piece+1][sq] = EG_PIECE_VALUES[piece_type] + eg_piece_tables[piece_type][sq]; 
       } else {
-        table[piece][sq] = MG_PIECE_VALUES[piece] + mg_piece_tables[piece][sq^56]; 
-        table[piece+1][sq] = MG_PIECE_VALUES[piece] + mg_piece_tables[piece][sq]; 
+        table[piece][sq] = MG_PIECE_VALUES[piece_type] + mg_piece_tables[piece_type][sq^56]; 
+        table[piece+1][sq] = MG_PIECE_VALUES[piece_type] + mg_piece_tables[piece_type][sq]; 
       }
     }
   }
   return table;
 };
 
-const std::array<std::array<int, 64>, 6> eg_table = init_tables(1);
-const std::array<std::array<int, 64>, 6> mg_table = init_tables(0);
+const std::array<std::array<int, 64>, 12> eg_table = init_tables(1);
+const std::array<std::array<int, 64>, 12> mg_table = init_tables(0);
 
 int32_t evaluate_position(const Position& pos) {
 
@@ -74,6 +75,8 @@ int32_t evaluate_position(const Position& pos) {
   int eg_phase = 256 - mg_phase;
 
   int32_t score = ((mg_score * mg_phase + eg_score * eg_phase) >> 8);
+
+  if (pos.side_to_move == BLACK) score = -score;
 
   return score;
 

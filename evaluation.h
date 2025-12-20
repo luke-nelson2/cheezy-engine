@@ -155,8 +155,8 @@ const std::array<std::array<int, 64>, 6> eg_piece_tables = {
   eg_king_table
 };
 
-extern const std::array<std::array<int, 64>, 6> mg_table;
-extern const std::array<std::array<int, 64>, 6> eg_table;
+extern const std::array<std::array<int, 64>, 12> mg_table;
+extern const std::array<std::array<int, 64>, 12> eg_table;
 
 const std::array<int, 6> MG_PIECE_VALUES = {82, 337, 365, 477, 1025, 0};
 const std::array<int, 6> EG_PIECE_VALUES = {94, 281, 297, 512, 936, 0};

@@ -19,14 +19,14 @@ int32_t evaluate_position(const Position& pos) {
 
   int32_t score = 0;
 
-  for (uint8_t piece = WHITE_PAWN; piece < NO_PIECE; piece++) {
+  // WHITE PIECES
+  for (uint8_t piece = WHITE_PAWN; piece < BLACK_KING; piece+=2) {
     // array and indexing?
     uint8_t piece_type = piece >> 1;
     uint8_t piece_side = piece & 1U;
     int32_t piece_value = PIECE_VALUES[piece_type];
     int32_t piece_count = MoveUtility::count_bits(pos.all_piece_bitboards[piece]);
     
-
     score += piece_count * piece_value;
 
     // Positional Bonuses
@@ -36,15 +36,33 @@ int32_t evaluate_position(const Position& pos) {
       
       uint8_t square = MoveUtility::get_lsbit_index(piece_bb);
       pop_bit(piece_bb, square);
-      uint8_t idx = MoveUtility::NO_SQUARE;
-
-      if (piece_side == WHITE) {
-        idx = square^56;
-      } else {
-        idx = square;
-      }
+      uint8_t idx = square^56;
 
       score += PIECE_SQUARE_TABLES[piece_type][idx];
+    } 
+
+  }
+
+  // BLACK PIECES
+  for (uint8_t piece = BLACK_PAWN; piece < NO_PIECE; piece+=2) {
+    // array and indexing?
+    uint8_t piece_type = piece >> 1;
+    uint8_t piece_side = piece & 1U;
+    int32_t piece_value = PIECE_VALUES[piece_type];
+    int32_t piece_count = MoveUtility::count_bits(pos.all_piece_bitboards[piece]);
+    
+    score -= piece_count * piece_value;
+
+    // Positional Bonuses
+    // WHILE POP
+    uint64_t piece_bb = pos.all_piece_bitboards[piece];
+    while (piece_bb) {
+      
+      uint8_t square = MoveUtility::get_lsbit_index(piece_bb);
+      pop_bit(piece_bb, square);
+      uint8_t idx = square;
+
+      score -= PIECE_SQUARE_TABLES[piece_type][idx];
     } 
 
   }

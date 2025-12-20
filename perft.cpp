@@ -94,12 +94,12 @@ void divide(Position& pos, uint8_t depth) {
 // 
 
 int main() {
-  std::string fen_string = "r4rk1/3nqp1p/6p1/p1Pp4/PPn2P2/2N4Q/5BPP/R4RK1 b - - 1 21";
+  std::string fen_string = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0";
   Position pos(fen_string);
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  divide(pos, 4);
+  divide(pos, 5);
 
   // End timing
   auto end = std::chrono::high_resolution_clock::now();

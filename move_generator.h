@@ -2,6 +2,7 @@
 // #include "move.h"
 // #include "move_utility.h"
 #include "move_utility.h"
+#include "piece.h"
 #include "position.h"
 #include <cstdint>
 #include <iostream>
@@ -13,6 +14,13 @@ class MoveGenerator {
 public:
 
   std::array<Move, 256> move_list;
+  std::array<int32_t, 256> score_list;
+  static constexpr std::array<uint8_t, 6> PIECE_SCORE{1,2,3,4,5,6};
+  static const int32_t WINNING_CAPTURE = 6'000'000;
+  static const int32_t EQUAL_CAPTURE = 5'000'000;
+  static const int32_t LOSING_CAPTURE = -1'000'000;
+  static const int32_t CASTLE_BONUS = 10'000;
+  static const int32_t QUEEN_PROMO_BONUS = 7'000'000;
   uint8_t count;
 
   MoveGenerator() : count(0) {}
@@ -85,6 +93,20 @@ private:
         uint8_t to_sq = get_lsbit_index(attacks);
         pop_bit(attacks, to_sq);
         move_list[count] = Move(from_sq, to_sq);
+
+        uint8_t to_piece_type = pos.piece_list[to_sq];
+
+        if (to_piece_type != NO_PIECE) {
+
+          int32_t mvv_lva_score = 10*PIECE_SCORE[to_piece_type >> 1] - 2;
+
+          if (to_piece_type >= WHITE_ROOK) score_list[count] = WINNING_CAPTURE + mvv_lva_score;
+          else if (to_piece_type >= WHITE_KNIGHT) score_list[count] = EQUAL_CAPTURE + mvv_lva_score;
+          else score_list[count] = LOSING_CAPTURE + mvv_lva_score;
+
+        } else {
+          score_list[count] = 0;
+        }
         count++;
       }
     }
@@ -108,6 +130,18 @@ private:
         uint8_t to_sq = get_lsbit_index(attacks);
         pop_bit(attacks, to_sq);
         move_list[count] = Move(from_sq, to_sq);
+
+        uint8_t to_piece_type = pos.piece_list[to_sq];
+        if (to_piece_type != NO_PIECE) {
+
+          int32_t mvv_lva_score = 10*PIECE_SCORE[to_piece_type >> 1] - 3;
+          if (to_piece_type >= WHITE_ROOK) score_list[count] = WINNING_CAPTURE + mvv_lva_score;
+          else if (to_piece_type >= WHITE_KNIGHT) score_list[count] = EQUAL_CAPTURE + mvv_lva_score;
+          else score_list[count] = LOSING_CAPTURE + mvv_lva_score;
+
+        } else {
+          score_list[count] = 0;
+        }
         count++;
       }
     }
@@ -131,6 +165,19 @@ private:
         uint8_t to_sq = get_lsbit_index(attacks);
         pop_bit(attacks, to_sq);
         move_list[count] = Move(from_sq, to_sq);
+
+        uint8_t to_piece_type = pos.piece_list[to_sq];
+        if (to_piece_type != NO_PIECE) {
+
+          int32_t mvv_lva_score = 10*PIECE_SCORE[to_piece_type >> 1] - 4;
+          if (to_piece_type >= WHITE_QUEEN) score_list[count] = mvv_lva_score + WINNING_CAPTURE;
+          else if (to_piece_type >= WHITE_ROOK) score_list[count] = mvv_lva_score + EQUAL_CAPTURE;
+          else score_list[count] = mvv_lva_score + LOSING_CAPTURE;
+
+        } else {
+          score_list[count] = 0;
+        }
+
         count++;
       }
     }
@@ -153,12 +200,21 @@ private:
         uint8_t to_sq = get_lsbit_index(attacks);
         pop_bit(attacks, to_sq);
         move_list[count] = Move(from_sq, to_sq);
+
+        uint8_t to_piece_type = pos.piece_list[to_sq];
+        if (to_piece_type != NO_PIECE) {
+
+          int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 5;
+          if (to_piece_type >= WHITE_QUEEN) score_list[count] = mvv_lva_score + EQUAL_CAPTURE;
+          else score_list[count] = mvv_lva_score + LOSING_CAPTURE;
+
+        } else {
+          score_list[count] = 0;
+        }
         count++;
       }
     }
   }
-
-  
 
   template<uint8_t Us>
   void generate_king_moves(const Position& pos) {
@@ -178,6 +234,14 @@ private:
         uint8_t to_sq = get_lsbit_index(attacks);
         pop_bit(attacks, to_sq);
         move_list[count] = Move(from_sq, to_sq);
+
+        uint8_t to_piece_type = pos.piece_list[to_sq];
+        if (to_piece_type != NO_PIECE) {
+          score_list[count] = 10*((to_piece_type >> 1) + 1) - 6 + WINNING_CAPTURE;
+        } else {
+          score_list[count] = 0;
+        }
+
         count++;
       }
     }
@@ -206,7 +270,11 @@ private:
         }
       }
 
-      if (!fail) move_list[count++] = Move(king_square, king_square + 2, CASTLE_KINGSIDE);
+      if (!fail) {
+        move_list[count] = Move(king_square, king_square + 2, CASTLE_KINGSIDE);
+        score_list[count] = CASTLE_BONUS;
+        count++;
+      }
     }
 
     // Queenside Castle
@@ -219,7 +287,11 @@ private:
         }
       }
 
-      if (!fail) move_list[count++] = Move(king_square, king_square - 2, CASTLE_QUEENSIDE);
+      if (!fail) {
+        move_list[count] = Move(king_square, king_square - 2, CASTLE_QUEENSIDE);
+        score_list[count] = CASTLE_BONUS;
+        count++;
+      }
     }
 
   }
@@ -253,12 +325,20 @@ private:
 
       // Check promotion
       if (1ULL << to_sq & PromotionRank) {
-        move_list[count++] = Move(from_sq, to_sq,PROMO_QUEEN);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_KNIGHT);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_ROOK);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_BISHOP);
+        move_list[count] = Move(from_sq, to_sq,PROMO_QUEEN);
+        move_list[count+1] = Move(from_sq, to_sq,PROMO_KNIGHT);
+        move_list[count+2] = Move(from_sq, to_sq,PROMO_ROOK);
+        move_list[count+3] = Move(from_sq, to_sq,PROMO_BISHOP);
+
+        score_list[count] = QUEEN_PROMO_BONUS;
+        for (int i = 1; i < 4; i++) {
+          score_list[count+i] = 0;
+        }
+        count+=4;
       } else {
-        move_list[count++] = Move(from_sq, to_sq);
+        move_list[count] = Move(from_sq, to_sq);
+        score_list[count] = 0;
+        count++;
       }
     }
 
@@ -279,7 +359,9 @@ private:
       pop_bit(double_pushes, to_sq);
       uint8_t from_sq = to_sq - shift*2;
 
-      move_list[count++] = Move(from_sq, to_sq);
+      move_list[count] = Move(from_sq, to_sq);
+      score_list[count] = 0;
+      count++;
     }
 
     // Capture
@@ -291,15 +373,28 @@ private:
       uint8_t to_sq = get_lsbit_index(capture_right);
       pop_bit(capture_right, to_sq);
       uint8_t from_sq = (Us == WHITE) ? (to_sq - 9) : (to_sq + 9);
+      uint8_t to_piece_type = pos.piece_list[to_sq];
 
       // Check promotion
       if (1ULL << to_sq & PromotionRank) {
-        move_list[count++] = Move(from_sq, to_sq,PROMO_QUEEN);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_KNIGHT);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_ROOK);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_BISHOP);
+        move_list[count] = Move(from_sq, to_sq,PROMO_QUEEN);
+        move_list[count+1] = Move(from_sq, to_sq,PROMO_KNIGHT);
+        move_list[count+2] = Move(from_sq, to_sq,PROMO_ROOK);
+        move_list[count+3] = Move(from_sq, to_sq,PROMO_BISHOP);
+
+        int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 1;
+        score_list[count] = QUEEN_PROMO_BONUS + mvv_lva_score;
+        for (int i = 1; i < 4; i++) {
+          score_list[count+i] = WINNING_CAPTURE + mvv_lva_score;
+        }
+        count+=4;
+
       } else {
-        move_list[count++] = Move(from_sq, to_sq);
+        move_list[count] = Move(from_sq, to_sq);
+        int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 1;
+        if (to_piece_type <= BLACK_PAWN) score_list[count] = mvv_lva_score + EQUAL_CAPTURE;
+        else score_list[count] = mvv_lva_score + WINNING_CAPTURE;
+        count++;
       }
     }
 
@@ -309,17 +404,30 @@ private:
 
     while (capture_left) {
       uint8_t to_sq = get_lsbit_index(capture_left);
+      uint8_t to_piece_type = pos.piece_list[to_sq];
       pop_bit(capture_left, to_sq);
       uint8_t from_sq = (Us == WHITE) ? (to_sq - 7) : (to_sq + 7);
 
       // Check promotion
       if (1ULL << to_sq & PromotionRank) {
-        move_list[count++] = Move(from_sq, to_sq,PROMO_QUEEN);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_KNIGHT);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_ROOK);
-        move_list[count++] = Move(from_sq, to_sq,PROMO_BISHOP);
+        move_list[count] = Move(from_sq, to_sq,PROMO_QUEEN);
+        move_list[count+1] = Move(from_sq, to_sq,PROMO_KNIGHT);
+        move_list[count+2] = Move(from_sq, to_sq,PROMO_ROOK);
+        move_list[count+3] = Move(from_sq, to_sq,PROMO_BISHOP);
+
+        int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 1;
+        score_list[count] = QUEEN_PROMO_BONUS + mvv_lva_score;
+        for (int i = 1; i < 4; i++) {
+          score_list[count+i] = WINNING_CAPTURE + mvv_lva_score;
+        }
+        count+=4;
+
       } else {
-        move_list[count++] = Move(from_sq, to_sq);
+        move_list[count] = Move(from_sq, to_sq);
+        int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 1;
+        if (to_piece_type <= BLACK_PAWN) score_list[count] = mvv_lva_score + EQUAL_CAPTURE;
+        else score_list[count] = mvv_lva_score + WINNING_CAPTURE;
+        count++;
       }
     }
 
@@ -331,7 +439,10 @@ private:
       while (ep_capturing) {
         uint8_t from_sq = get_lsbit_index(ep_capturing);
         pop_bit(ep_capturing, from_sq);
-        move_list[count++] = Move(from_sq, pos.en_passant_sq, EN_PASSANT);
+        move_list[count] = Move(from_sq, pos.en_passant_sq, EN_PASSANT);
+        int32_t mvv_lva_score = 9;
+        score_list[count] = mvv_lva_score + EQUAL_CAPTURE;
+        count++;
       }
     }
   }

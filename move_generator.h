@@ -15,13 +15,12 @@ public:
 
   std::array<Move, 256> move_list;
   std::array<int32_t, 256> score_list;
-  static constexpr std::array<uint8_t, 6> PIECE_SCORE{1,2,3,4,5,6};
   static const int32_t WINNING_CAPTURE = 6'000'000;
   static const int32_t EQUAL_CAPTURE = 5'000'000;
   static const int32_t LOSING_CAPTURE = -1'000'000;
   static const int32_t CASTLE_BONUS = 10'000;
   static const int32_t QUEEN_PROMO_BONUS = 7'000'000;
-  uint8_t count;
+  int count;
 
   MoveGenerator() : count(0) {}
 
@@ -37,26 +36,22 @@ public:
   bool is_square_attacked(const Position& pos, uint8_t square, uint8_t Us) {
     uint8_t Them = (Us == WHITE) ? BLACK : WHITE;
 
-    uint64_t bishop_attack = get_bishop_attacks(square, pos.total_bb) & 
-      (pos.all_piece_bitboards[WHITE_BISHOP + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
-
-    uint64_t rook_attack = get_rook_attacks(square, pos.total_bb) & 
-      (pos.all_piece_bitboards[WHITE_ROOK + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them]);
+    // Pawn attack
+    if (PAWN_ATTACKS[Us][square] & pos.all_piece_bitboards[WHITE_PAWN + Them]) return true;
 
     // Knight attack
-    uint64_t knight_attack = KNIGHT_MOVES[square] & pos.all_piece_bitboards[WHITE_KNIGHT + Them];
-
-    // Pawn attack
-    uint64_t pawn_attack = PAWN_ATTACKS[Us][square] & pos.all_piece_bitboards[WHITE_PAWN + Them];
+    if (KNIGHT_MOVES[square] & pos.all_piece_bitboards[WHITE_KNIGHT + Them]) return true;
 
     // King attack
-    uint64_t king_attack = KING_MOVES[square] & pos.all_piece_bitboards[WHITE_KING + Them]; 
+    if (KING_MOVES[square] & pos.all_piece_bitboards[WHITE_KING + Them]) return true; 
 
-    if (bishop_attack | rook_attack | knight_attack | pawn_attack | king_attack) {
-      return true;
-    } else {
-      return false;
-    }
+    if (get_rook_attacks(square, pos.total_bb) & 
+      (pos.all_piece_bitboards[WHITE_ROOK + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them])) return true;
+
+    if (get_bishop_attacks(square, pos.total_bb) & 
+      (pos.all_piece_bitboards[WHITE_BISHOP + Them] | pos.all_piece_bitboards[WHITE_QUEEN + Them])) return true;
+
+    return false;
   }
 
 private:
@@ -98,7 +93,7 @@ private:
 
         if (to_piece_type != NO_PIECE) {
 
-          int32_t mvv_lva_score = 10*PIECE_SCORE[to_piece_type >> 1] - 2;
+          int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 2;
 
           if (to_piece_type >= WHITE_ROOK) score_list[count] = WINNING_CAPTURE + mvv_lva_score;
           else if (to_piece_type >= WHITE_KNIGHT) score_list[count] = EQUAL_CAPTURE + mvv_lva_score;
@@ -134,7 +129,7 @@ private:
         uint8_t to_piece_type = pos.piece_list[to_sq];
         if (to_piece_type != NO_PIECE) {
 
-          int32_t mvv_lva_score = 10*PIECE_SCORE[to_piece_type >> 1] - 3;
+          int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 3;
           if (to_piece_type >= WHITE_ROOK) score_list[count] = WINNING_CAPTURE + mvv_lva_score;
           else if (to_piece_type >= WHITE_KNIGHT) score_list[count] = EQUAL_CAPTURE + mvv_lva_score;
           else score_list[count] = LOSING_CAPTURE + mvv_lva_score;
@@ -169,7 +164,7 @@ private:
         uint8_t to_piece_type = pos.piece_list[to_sq];
         if (to_piece_type != NO_PIECE) {
 
-          int32_t mvv_lva_score = 10*PIECE_SCORE[to_piece_type >> 1] - 4;
+          int32_t mvv_lva_score = 10*((to_piece_type >> 1) + 1) - 4;
           if (to_piece_type >= WHITE_QUEEN) score_list[count] = mvv_lva_score + WINNING_CAPTURE;
           else if (to_piece_type >= WHITE_ROOK) score_list[count] = mvv_lva_score + EQUAL_CAPTURE;
           else score_list[count] = mvv_lva_score + LOSING_CAPTURE;

@@ -5,3 +5,6 @@ UCI Compliance
 Move ordering for quiet moves  
 King endgame eval tables  
 Iterative Deepening  
+Quiescence Search  
+Killer Heuristic  
+History Heuristic  

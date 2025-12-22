@@ -15,6 +15,7 @@
 //   Search the move with the highest score
 //   If no cutoff occurs, search the move with the second highest score and so on
 
+using namespace MoveUtility;
 
 const int32_t MATE_SCORE = 50'000;
 // prioritze faster mate

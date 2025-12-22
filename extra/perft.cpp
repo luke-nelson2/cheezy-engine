@@ -6,6 +6,8 @@
 #include "move_utility.h"
 #include "position.h"
 
+using namespace MoveUtility;
+
 std::string move_to_string(const Move& move) {
   std::string move_str = "";
   uint8_t from_sq = move.get_from_sq();

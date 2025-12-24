@@ -4,6 +4,7 @@
 #include "piece.h"
 #include "position.h"
 #include <cstdint>
+#include "search.h"
 
 using namespace MoveUtility;
 
@@ -414,4 +415,61 @@ void MoveGenerator::generate_pawn_moves(const Position& pos) {
       count++;
     }
   }
+}
+
+inline void MoveGenerator::add_move(Move move, uint8_t moving_piece_type, uint8_t captured_piece_type, PST& history_heuristic) {
+  // Cases: 
+  // Pawn move
+  //   Quiet, Capture, En Passant, Promotion
+  // Knight move
+  // Bishop move
+  // Rook move
+  // Queen move
+  // King move
+  //   Castle or otherwise
+
+  // Capturing moves:
+  //   Winning, Equal, Losing
+  //   Bishops are equal to knights
+
+  // Add move to move_list
+  // Add score to score_list based on bands
+  // Bands:
+  //   Promo move
+  //   Winning move
+  //   Equal move
+  //   Killer move
+  //   History move
+  //   Losing move
+
+  move_list[count] = move;
+
+  if (captured_piece_type != NO_PIECE) {
+    uint8_t attacker_rank = PIECE_RANKS[moving_piece_type];
+    uint8_t victim_rank = PIECE_RANKS[captured_piece_type];
+
+    int32_t mvv_lva_score = 10*(victim_rank) - attacker_rank;
+
+    if (move.get_flags() == PROMO_QUEEN) {
+      score_list[count] = QUEEN_PROMO_BONUS + mvv_lva_score;
+      count++;
+      return;
+    }
+
+    if (victim_rank > attacker_rank) {
+      score_list[count] = WINNING_CAPTURE + mvv_lva_score;
+    } else if (victim_rank == attacker_rank) {
+      score_list[count] = EQUAL_CAPTURE + mvv_lva_score;
+    } else {
+      score_list[count] = LOSING_CAPTURE + mvv_lva_score;
+    }
+  } else {
+    // QUIET MOVE
+
+
+    // History Heuristic
+    score_list[count] = history_heuristic[moving_piece_type][move.get_to_sq()];
+  }
+
+  count++;
 }

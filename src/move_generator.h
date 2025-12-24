@@ -1,5 +1,8 @@
 #pragma once
+#include "piece.h"
 #include "position.h"
+#include <cstdint>
+#include "search.h"
 
 class MoveGenerator {
 
@@ -21,6 +24,8 @@ public:
 
 private:
 
+  static constexpr std::array<uint8_t, 6> PIECE_RANKS = {1, 2, 2, 3, 4, 5};
+
   template<uint8_t Us>
   void generate_all_moves(const Position& pos);
 
@@ -41,5 +46,7 @@ private:
 
   template<uint8_t Us>
   void generate_pawn_moves(const Position& pos);
+
+  inline void add_move(Move move, uint8_t moving_piece_type, uint8_t captured_piece_type, PST& history_heuristic);
   
 };

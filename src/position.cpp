@@ -168,6 +168,23 @@ void Position::make_move(Move move){
   uint64_t to_bit = 1ULL << to_sq;
   uint64_t move_mask = from_bit | to_bit;
 
+
+  // --- DEBUG TRAP START ---
+    // If we are trying to move a piece, but the piece_list says the square is empty...
+    if (moving_piece_type == NO_PIECE) {
+        std::cout << "CRASH: Ghost Piece Detected!" << std::endl;
+        std::cout << "Move: " << (int)from_sq << " -> " << (int)move.get_to_sq() << std::endl;
+        std::cout << "Ply: " << ply << std::endl;
+        
+        // Print the bitboard that THINKS there is a piece here
+        for(int i=0; i<12; i++) {
+            if (all_piece_bitboards[i] & (1ULL << from_sq)) {
+                std::cout << "Bitboard " << i << " has a bit at " << (int)from_sq << ", but PieceList is empty." << std::endl;
+            }
+        }
+        exit(1); 
+    }
+
   // UPDATE:
   // moving PIECE BITBOARD
   // CAPTURED PIECE BITBOARD (IF APPLICABLE)
@@ -194,6 +211,11 @@ void Position::make_move(Move move){
   // Update Piece Lists
   piece_list[from_sq] = NO_PIECE;
   piece_list[to_sq] = moving_piece_type;
+
+  if (MoveUtility::CASTLING_RIGHTS_UPDATE[7] == 0 || MoveUtility::CASTLING_RIGHTS_UPDATE[4] == 0) {
+    std::cout << "Castling rights uninitialized" << std::endl;
+    std::exit(1);
+  }
 
   // Update other board state variables
   castling_rights &= ~MoveUtility::CASTLING_RIGHTS_UPDATE[from_sq];

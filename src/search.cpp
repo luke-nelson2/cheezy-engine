@@ -28,7 +28,7 @@ int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t bet
   uint8_t legal_moves = 0;
 
   MoveGenerator move_gen;
-  move_gen.generate(pos);
+  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic);
 
   for (int i = 0; i < move_gen.count; i++) {
 
@@ -41,31 +41,34 @@ int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t bet
 
     Move move = move_gen.move_list[i];
     pos.make_move(move);
+    rel_ply++;
     uint8_t king_square = get_lsbit_index(pos.all_piece_bitboards[BLACK_KING - pos.side_to_move]);
 
     if (move_gen.is_square_attacked(pos, king_square, pos.side_to_move^1)) {
       pos.unmake_move();
+      rel_ply--;
       continue;
     }
     legal_moves++;
 
     score = -negamax(pos, depth - 1, -beta, -alpha);
     pos.unmake_move();
+    rel_ply--;
 
     if (score > best_score) best_score = score;
     if (score > alpha) alpha = score;
 
     // Beta cutoff
     if (alpha >= beta) {
-      
+
       if (pos.piece_list[move.get_to_sq()] == NO_PIECE) {
         uint8_t piece = pos.piece_list[move.get_from_sq()];
         uint8_t to_sq = move.get_to_sq();
 
-        update_killers(pos.ply, move);
+        update_killers(rel_ply, move);
         history_heuristic[piece][to_sq] += (depth * depth);
       }
-      
+
       break;
     }
   }
@@ -91,8 +94,12 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
   int32_t alpha = -INF;
   int32_t beta = INF;
 
+  rel_ply = 0;
+  clear_history();
+  clear_killers();
+
   MoveGenerator move_gen;
-  move_gen.generate(pos);
+  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic);
   uint8_t legal_moves = 0;
 
   for (int i = 0; i < move_gen.count; i++) {
@@ -105,10 +112,12 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
     std::swap(move_gen.score_list[i], move_gen.score_list[best_idx]);
 
     pos.make_move(move_gen.move_list[i]);
+    rel_ply++;
     uint8_t king_square = get_lsbit_index(pos.all_piece_bitboards[BLACK_KING - pos.side_to_move]);
 
     if (move_gen.is_square_attacked(pos, king_square, pos.side_to_move^1)) {
       pos.unmake_move();
+      rel_ply--;
       continue;
     }
 
@@ -126,6 +135,7 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
 
 
     pos.unmake_move();
+    rel_ply--;
   }
 
   if (legal_moves == 0) {
@@ -142,5 +152,3 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
   return best_move;
 
 }
-
-

@@ -21,7 +21,7 @@ struct Move {
     move_data = (uint16_t)from_sq | ((uint16_t)to_sq << 6) | ((uint16_t)flags << 12);
   }
 
-  bool operator==(const Move& other) {
+  inline bool operator== (const Move& other) const {
     return move_data == other.move_data;
   }
   
@@ -36,6 +36,7 @@ struct Move {
   inline uint8_t get_flags() const {
     return (move_data >> 12) & 0xF;
   }
+};
 
   // FLAGS
   //   0 - NORMAL MOVE
@@ -47,4 +48,3 @@ struct Move {
   //   5 - CASTLE KINGSIDE
   //   6 - CASTLE QUEENSIDE
   //   7 - EN PASSANT
-};

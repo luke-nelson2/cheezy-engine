@@ -22,6 +22,8 @@ private:
   const int32_t MATE_SCORE = 50'000;
   const int32_t INF = 60000;
 
+  int32_t rel_ply = 0;
+
   int32_t negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t beta);
 
   inline void update_killers(uint8_t ply, Move move) {
@@ -43,5 +45,5 @@ private:
       }
     }
   }
-  
+
 };

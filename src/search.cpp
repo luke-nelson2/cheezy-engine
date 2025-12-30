@@ -8,6 +8,43 @@
 #include <cstdint>
 #include <iostream>
 
+namespace {
+std::string move_to_string(const Move& move) {
+  std::string move_str = "";
+  uint8_t from_sq = move.get_from_sq();
+  uint8_t to_sq = move.get_to_sq();
+  uint8_t flags = move.get_flags();
+
+  uint8_t from_file = from_sq % 8;
+  uint8_t from_rank = from_sq / 8;
+
+  uint8_t to_file = to_sq % 8;
+  uint8_t to_rank = to_sq / 8;
+
+  char from_file_chr = from_file + 'a';
+  char from_rank_chr = from_rank + '1';
+
+  char to_file_chr = to_file + 'a';
+  char to_rank_chr = to_rank + '1';
+
+  move_str += from_file_chr;
+  move_str += from_rank_chr;
+  move_str += to_file_chr;
+  move_str += to_rank_chr;
+
+  if (flags <= PROMO_QUEEN && flags >= PROMO_KNIGHT) {
+    char promo_char;
+    if (flags == PROMO_KNIGHT) promo_char = 'n';
+    if (flags == PROMO_BISHOP) promo_char = 'b';
+    if (flags == PROMO_ROOK) promo_char = 'r';
+    if (flags == PROMO_QUEEN) promo_char = 'q';
+
+    move_str += promo_char;
+  }
+
+  return move_str;
+}
+}
 
 
 // MOVE ORDERING:
@@ -17,18 +54,60 @@
 
 using namespace MoveUtility;
 
+
+Move Search::iterative_deepening(Position& pos, uint8_t max_depth) {
+  previous_pv.count = 0;
+  
+  clear_history();
+  clear_killers();
+
+  for (uint8_t depth = 1; depth <= max_depth; depth++) {
+    total_nodes = 0;
+
+    negamax_root(pos, depth);
+
+    previous_pv = pv_table[0];
+
+    double ebf = std::pow((double)total_nodes, 1.0 / depth);
+
+    // 4. UCI-style Output
+    std::cout << "info depth " << (int)depth
+              << " nodes " << total_nodes
+              << " ebf " << std::fixed << std::setprecision(2) << ebf
+              << " pv ";
+    // std::cout << (int)previous_pv.count << std::endl;
+    for (int i = 0; i < previous_pv.count; i++) {
+        std::cout << move_to_string(previous_pv.moves[i]) << " ";
+    }
+    std::cout << std::endl;
+
+  }
+
+  return previous_pv.moves[0];
+
+}
+
 // prioritze faster mate
 // alpha beta pruning
 // handle mates and draws
-int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t beta) {
+int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t beta, bool is_pv_line) {
+
+  total_nodes++;
+  pv_table[rel_ply].count = 0;
+
   if (depth == 0) return Evaluation::evaluate_position(pos);
 
   int32_t best_score = -INF;
   int32_t score = 0;
   uint8_t legal_moves = 0;
 
+  Move hint = Move();
+  if (is_pv_line && rel_ply < previous_pv.count) {
+    hint = previous_pv.moves[rel_ply];
+  }
+
   MoveGenerator move_gen;
-  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic);
+  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic, hint);
 
   for (int i = 0; i < move_gen.count; i++) {
 
@@ -51,12 +130,24 @@ int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t bet
     }
     legal_moves++;
 
-    score = -negamax(pos, depth - 1, -beta, -alpha);
+    bool child_is_pv = is_pv_line && (move == hint);
+
+    score = -negamax(pos, depth - 1, -beta, -alpha, child_is_pv);
     pos.unmake_move();
     rel_ply--;
 
     if (score > best_score) best_score = score;
-    if (score > alpha) alpha = score;
+    if (score > alpha) {
+      alpha = score;
+
+      pv_table[rel_ply].moves[0] = move;
+
+      for (uint8_t j = 0; j < pv_table[rel_ply + 1].count; j++) {
+        pv_table[rel_ply].moves[j+1] = pv_table[rel_ply+1].moves[j];
+      }
+
+      pv_table[rel_ply].count = pv_table[rel_ply+1].count + 1;
+    }
 
     // Beta cutoff
     if (alpha >= beta) {
@@ -95,11 +186,13 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
   int32_t beta = INF;
 
   rel_ply = 0;
-  clear_history();
-  clear_killers();
+
+  pv_table[rel_ply].count = 0;
+
+  Move hint = (previous_pv.count > 0) ? previous_pv.moves[0] : Move();
 
   MoveGenerator move_gen;
-  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic);
+  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic, previous_pv.moves[rel_ply]);
   uint8_t legal_moves = 0;
 
   for (int i = 0; i < move_gen.count; i++) {
@@ -123,19 +216,40 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
 
     legal_moves++;
 
-    score = -negamax(pos, depth - 1, -beta, -alpha);
+    bool child_is_pv = (move_gen.move_list[i] == hint);
+
+    if (legal_moves == 1) {
+      score = -negamax(pos, depth - 1, -beta, -alpha, child_is_pv);
+    } else {
+      score = -negamax(pos, depth - 1, -alpha - 1, -alpha, false);
+
+      if (score > alpha && score < beta) {
+        score = -negamax(pos, depth-1, -beta, -alpha, false);
+      }
+    }
+    
+    pos.unmake_move();
+    rel_ply--;
     if (score > best_score) {
       best_score = score;
       best_move = move_gen.move_list[i];
     }
 
-    if (best_score > alpha) {
-      alpha = best_score;
+    if (score > alpha) {
+      alpha = score;
+
+      pv_table[rel_ply].moves[0] = move_gen.move_list[i];
+
+      for (uint8_t j = 0; j < pv_table[rel_ply + 1].count; j++) {
+        pv_table[rel_ply].moves[j+1] = pv_table[rel_ply+1].moves[j];
+      }
+
+      // std::cout << (int)pv_table[rel_ply].count << std::endl;
+      pv_table[rel_ply].count = pv_table[rel_ply+1].count + 1;
     }
 
 
-    pos.unmake_move();
-    rel_ply--;
+    
   }
 
   if (legal_moves == 0) {

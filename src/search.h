@@ -1,16 +1,33 @@
 #pragma once
 #include <cstdint>
 #include <array>
+#include <iomanip>
 #include "position.h"
 #include "move.h"
 
 using PST = std::array<std::array<int32_t, 64>, 12>;
 
+struct PVLine {
+  uint8_t count;
+  std::array<Move, 64> moves;
+};
+
 class Search {
 
 public:
+  uint64_t total_nodes = 0;
+
+  std::array<PVLine, 64> pv_table;
+  PVLine previous_pv;
+
+  Move iterative_deepening(Position& pos, uint8_t max_depth);
 
   Move negamax_root(Position& pos, uint8_t depth);
+
+  void print_stats(int depth) {
+    double ebf = std::pow((double)total_nodes, 1.0 / depth);
+    std::cout << "Eff BF:   " << std::fixed << std::setprecision(2) << ebf << " (Alpha-Beta performance)" << std::endl;
+  }
 
 private:
 
@@ -24,7 +41,9 @@ private:
 
   int32_t rel_ply = 0;
 
-  int32_t negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t beta);
+  int32_t negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t beta, bool is_pv_line);
+
+  
 
   inline void update_killers(uint8_t ply, Move move) {
     killer_heuristic[ply][1] = killer_heuristic[ply][0];

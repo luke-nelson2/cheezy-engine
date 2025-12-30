@@ -3,6 +3,7 @@
 #include "position.h"
 #include "search.h"
 #include "move_generator.h"
+#include <cmath>
 
 std::string move_to_string(const Move& move) {
   std::string move_str = "";
@@ -45,7 +46,8 @@ Move string_to_move(std::string move_str, Position& pos) {
   MoveGenerator mg;
   std::array<Move, 2> null_killer = {Move()};
   std::array<std::array<int32_t, 64>, 12> null_history = {0};
-  mg.generate(pos, null_killer, null_history);
+  Move null_move;
+  mg.generate(pos, null_killer, null_history, null_move);
 
   for (int i = 0; i < mg.count; i++) {
     Move legal_move = mg.move_list[i];
@@ -84,7 +86,8 @@ int main() {
     std::cin >> user_side;
     user_side = (user_side == 'w') ? 0 : 1;
     if (user_side != pos.side_to_move) {
-      best_move = srch.negamax_root(pos, depth);
+      best_move = srch.iterative_deepening(pos, depth);
+      // srch.print_stats(depth);
       pos.make_move(best_move);
       std::cout << "My move: " << move_to_string(best_move) << std::endl;
       break;
@@ -101,7 +104,8 @@ int main() {
     if (user_move.move_data != 0) {
 
       pos.make_move(user_move);
-      best_move = srch.negamax_root(pos, depth);
+      best_move = srch.iterative_deepening(pos, depth);
+      // srch.print_stats(depth);
       pos.make_move(best_move);
       std::cout << "My move: " << move_to_string(best_move) << std::endl;
 

@@ -13,18 +13,21 @@ public:
   std::array<int32_t, 256> score_list;
   std::array<Move, 2> ply_killers;
   const PST* history_heuristic;
+  Move current_pv_move;
+  static const int32_t PV_BAND = 8'000'000;
+  static const int32_t QUEEN_PROMO_BONUS = 7'000'000;
   static const int32_t WINNING_CAPTURE = 6'000'000;
   static const int32_t EQUAL_CAPTURE = 5'000'000;
   static const int32_t KILLER_1_BAND = 4'000'000;
   static const int32_t KILLER_2_BAND = 3'000'000;
   static const int32_t LOSING_CAPTURE = -1'000'000;
   static const int32_t CASTLE_BONUS = 10'000;
-  static const int32_t QUEEN_PROMO_BONUS = 7'000'000;
+  
   int count;
 
   MoveGenerator() : count(0) {}
 
-  void generate(const Position& pos, const std::array<Move, 2> killers, const PST& hist_heur);
+  void generate(const Position& pos, const std::array<Move, 2> killers, const PST& hist_heur, Move pv_move);
   bool is_square_attacked(const Position& pos, uint8_t square, uint8_t Us);
 
 private:

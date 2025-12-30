@@ -8,11 +8,12 @@
 
 using namespace MoveUtility;
 
-void MoveGenerator::generate(const Position& pos, const std::array<Move, 2> killers, const PST& hist_heur) {
+void MoveGenerator::generate(const Position& pos, const std::array<Move, 2> killers, const PST& hist_heur, Move pv_move) {
   count = 0;
   ply_killers[0] = killers[0];
   ply_killers[1] = killers[1];
   history_heuristic = &hist_heur;
+  current_pv_move = pv_move;
 
   if (pos.side_to_move == WHITE) {
     generate_all_moves<WHITE>(pos);
@@ -26,6 +27,14 @@ inline void MoveGenerator::add_move(Move move, uint8_t moving_piece_type, uint8_
   move_list[count] = move;
   uint8_t flags = move.get_flags();
 
+  // PV Move
+  if (move == current_pv_move) {
+    score_list[count] = PV_BAND;
+    count++;
+    return;
+  }
+
+  // Promotions
   if (flags >= PROMO_KNIGHT && flags <= PROMO_QUEEN) {
     if (flags == PROMO_QUEEN) {
       score_list[count] = QUEEN_PROMO_BONUS;
@@ -45,12 +54,6 @@ inline void MoveGenerator::add_move(Move move, uint8_t moving_piece_type, uint8_
     uint8_t victim_rank = PIECE_RANKS[captured_piece_type];
 
     int32_t mvv_lva_score = 10*(victim_rank) - attacker_rank;
-
-    if (move.get_flags() == PROMO_QUEEN) {
-      score_list[count] = QUEEN_PROMO_BONUS + mvv_lva_score;
-      count++;
-      return;
-    }
 
     if (victim_rank > attacker_rank) {
       score_list[count] = WINNING_CAPTURE + mvv_lva_score;

@@ -212,11 +212,6 @@ void Position::make_move(Move move){
   piece_list[from_sq] = NO_PIECE;
   piece_list[to_sq] = moving_piece_type;
 
-  if (MoveUtility::CASTLING_RIGHTS_UPDATE[7] == 0 || MoveUtility::CASTLING_RIGHTS_UPDATE[4] == 0) {
-    std::cout << "Castling rights uninitialized" << std::endl;
-    std::exit(1);
-  }
-
   // Update other board state variables
   castling_rights &= ~MoveUtility::CASTLING_RIGHTS_UPDATE[from_sq];
   castling_rights &= ~MoveUtility::CASTLING_RIGHTS_UPDATE[to_sq];

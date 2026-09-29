@@ -9,6 +9,7 @@
 
 // FEN constructor
 Position::Position(std::string fen_string) {
+  ply = 0;
 
   uint8_t piece_str_len = fen_string.find(' ');
   std::string piece_str = fen_string.substr(0,piece_str_len);
@@ -54,6 +55,8 @@ Position::Position() {
 
   side_to_move = 0;
   ply = 0;
+  halfmove_clock = 0;
+  fullmove_count = 1;
   castling_rights = 0xF;
   en_passant_sq = 64;
 
@@ -435,7 +438,7 @@ void Position::set_ep(std::string ep_string) {
   if (ep_string[0] != '-') {
 
     uint8_t file = ep_string[0] - 'a';
-    uint8_t rank = ep_string[1] - '0';
+    uint8_t rank = ep_string[1] - '1';
     en_passant_sq = rank*8 + file;
 
   }

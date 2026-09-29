@@ -7,9 +7,11 @@
 #include "search.h"
 #include <cstdint>
 #include <iostream>
+#include <sstream>
 
 namespace {
 std::string move_to_string(const Move& move) {
+  if (move.move_data == 0) return "0000";
   std::string move_str = "";
   uint8_t from_sq = move.get_from_sq();
   uint8_t to_sq = move.get_to_sq();
@@ -61,29 +63,53 @@ Move Search::iterative_deepening(Position& pos, uint8_t max_depth) {
   clear_history();
   clear_killers();
 
-  for (uint8_t depth = 1; depth <= max_depth; depth++) {
-    total_nodes = 0;
+  // Use the first legal move if stopped before depth 1 finishes.
+  Move best_move;
+  MoveGenerator move_gen;
+  move_gen.generate(pos, killer_heuristic[0], history_heuristic, Move());
+  for (int i = 0; i < move_gen.count; i++) {
+    Move move = move_gen.move_list[i];
+    pos.make_move(move);
+    uint8_t king_sq = get_lsbit_index(pos.all_piece_bitboards[BLACK_KING - pos.side_to_move]);
+    bool legal = !move_gen.is_square_attacked(pos, king_sq, pos.side_to_move ^ 1);
+    pos.unmake_move();
+    if (legal) {
+      best_move = move;
+      break;
+    }
+  }
 
-    negamax_root(pos, depth);
+  total_nodes = 0;
+  if (best_move.move_data == 0) return best_move;
+
+  max_depth = std::min(max_depth, MAX_DEPTH);
+  for (uint8_t depth = 1; depth <= max_depth; depth++) {
+    if (stop_requested.load()) break;
+
+    uint64_t starting_nodes = total_nodes;
+    Move iteration_move = negamax_root(pos, depth);
+    if (stop_requested.load()) break;
+    best_move = iteration_move;
 
     previous_pv = pv_table[0];
 
-    double ebf = std::pow((double)total_nodes, 1.0 / depth);
+    double ebf = std::pow((double)(total_nodes - starting_nodes), 1.0 / depth);
 
-    // 4. UCI-style Output
-    std::cout << "info depth " << (int)depth
-              << " nodes " << total_nodes
-              << " ebf " << std::fixed << std::setprecision(2) << ebf
-              << " pv ";
-    // std::cout << (int)previous_pv.count << std::endl;
+    std::ostringstream info;
+    info << "info depth " << (int)depth
+         << " nodes " << total_nodes
+         << " pv";
     for (int i = 0; i < previous_pv.count; i++) {
-        std::cout << move_to_string(previous_pv.moves[i]) << " ";
+      info << " " << move_to_string(previous_pv.moves[i]);
     }
-    std::cout << std::endl;
+    write_uci_line(info.str());
+    std::ostringstream stats;
+    stats << "info string Eff BF: " << std::fixed << std::setprecision(2) << ebf;
+    write_uci_line(stats.str());
 
   }
 
-  return previous_pv.moves[0];
+  return best_move;
 
 }
 
@@ -92,10 +118,12 @@ Move Search::iterative_deepening(Position& pos, uint8_t max_depth) {
 // handle mates and draws
 int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t beta, bool is_pv_line) {
 
-  total_nodes++;
   pv_table[rel_ply].count = 0;
+  if (stop_requested.load()) return 0;
 
-  if (depth == 0) return Evaluation::evaluate_position(pos);
+  if (depth == 0) return quiescence(pos, alpha, beta);
+  total_nodes++;
+  if (rel_ply >= MAX_DEPTH) return Evaluation::evaluate_position(pos);
 
   int32_t best_score = -INF;
   int32_t score = 0;
@@ -111,8 +139,9 @@ int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t bet
 
   for (int i = 0; i < move_gen.count; i++) {
 
-    uint8_t best_idx = i;
-    for (uint8_t j = i + 1; j < move_gen.count; j++) {
+    if (stop_requested.load()) return 0;
+    int best_idx = i;
+    for (int j = i + 1; j < move_gen.count; j++) {
       if (move_gen.score_list[j] > move_gen.score_list[best_idx]) best_idx = j;
     }
     std::swap(move_gen.move_list[i], move_gen.move_list[best_idx]);
@@ -135,6 +164,7 @@ int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t bet
     score = -negamax(pos, depth - 1, -beta, -alpha, child_is_pv);
     pos.unmake_move();
     rel_ply--;
+    if (stop_requested.load()) return 0;
 
     if (score > best_score) best_score = score;
     if (score > alpha) {
@@ -168,12 +198,68 @@ int32_t Search::negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t bet
     uint8_t current_king_sq = get_lsbit_index(pos.all_piece_bitboards[WHITE_KING + pos.side_to_move]);
     if (move_gen.is_square_attacked(pos, current_king_sq, pos.side_to_move)) {
       // CHECKMATE
-      return -MATE_SCORE - depth;
+      return -MATE_SCORE + rel_ply;
     } else {
       return 0;
     }
   }
 
+  return best_score;
+}
+
+int32_t Search::quiescence(Position& pos, int32_t alpha, int32_t beta) {
+  if (stop_requested.load()) return 0;
+  total_nodes++;
+  // Limit long chains of check evasions.
+  if (rel_ply >= MAX_DEPTH) return Evaluation::evaluate_position(pos);
+
+  MoveGenerator move_gen;
+  uint8_t king_sq = get_lsbit_index(pos.all_piece_bitboards[WHITE_KING + pos.side_to_move]);
+  bool in_check = move_gen.is_square_attacked(pos, king_sq, pos.side_to_move);
+  int32_t best_score = in_check ? -INF : Evaluation::evaluate_position(pos);
+  if (!in_check && best_score > alpha) alpha = best_score;
+
+  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic, Move());
+  int legal_moves = 0;
+  for (int i = 0; i < move_gen.count; i++) {
+    if (stop_requested.load()) return 0;
+    int best_idx = i;
+    for (int j = i + 1; j < move_gen.count; j++) {
+      if (move_gen.score_list[j] > move_gen.score_list[best_idx]) best_idx = j;
+    }
+    std::swap(move_gen.move_list[i], move_gen.move_list[best_idx]);
+    std::swap(move_gen.score_list[i], move_gen.score_list[best_idx]);
+
+    Move move = move_gen.move_list[i];
+    uint8_t flags = move.get_flags();
+    bool tactical = pos.piece_list[move.get_to_sq()] != NO_PIECE || flags == EN_PASSANT ||
+                    (flags >= PROMO_KNIGHT && flags <= PROMO_QUEEN);
+    pos.make_move(move);
+    king_sq = get_lsbit_index(pos.all_piece_bitboards[BLACK_KING - pos.side_to_move]);
+    if (move_gen.is_square_attacked(pos, king_sq, pos.side_to_move ^ 1)) {
+      pos.unmake_move();
+      continue;
+    }
+    legal_moves++;
+    // Verify at least one legal move before stand pat, to recognize stalemate.
+    if (!in_check && (alpha >= beta || !tactical)) {
+      pos.unmake_move();
+      if (alpha >= beta) return best_score;
+      continue;
+    }
+
+    rel_ply++;
+    int32_t score = -quiescence(pos, -beta, -alpha);
+    pos.unmake_move();
+    rel_ply--;
+    if (stop_requested.load()) return 0;
+
+    if (score > best_score) best_score = score;
+    if (score > alpha) alpha = score;
+    if (alpha >= beta) return best_score;
+  }
+
+  if (legal_moves == 0) return in_check ? -MATE_SCORE + rel_ply : 0;
   return best_score;
 }
 
@@ -192,13 +278,14 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
   Move hint = (previous_pv.count > 0) ? previous_pv.moves[0] : Move();
 
   MoveGenerator move_gen;
-  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic, previous_pv.moves[rel_ply]);
+  move_gen.generate(pos, killer_heuristic[rel_ply], history_heuristic, hint);
   uint8_t legal_moves = 0;
 
   for (int i = 0; i < move_gen.count; i++) {
 
-    uint8_t best_idx = i;
-    for (uint8_t j = i + 1; j < move_gen.count; j++) {
+    if (stop_requested.load()) break;
+    int best_idx = i;
+    for (int j = i + 1; j < move_gen.count; j++) {
       if (move_gen.score_list[j] > move_gen.score_list[best_idx]) best_idx = j;
     }
     std::swap(move_gen.move_list[i], move_gen.move_list[best_idx]);
@@ -230,6 +317,7 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
     
     pos.unmake_move();
     rel_ply--;
+    if (stop_requested.load()) break;
     if (score > best_score) {
       best_score = score;
       best_move = move_gen.move_list[i];
@@ -250,17 +338,6 @@ Move Search::negamax_root(Position& pos, uint8_t depth) {
 
 
     
-  }
-
-  if (legal_moves == 0) {
-    uint8_t current_king_sq = get_lsbit_index(pos.all_piece_bitboards[WHITE_KING + pos.side_to_move]);
-    if (move_gen.is_square_attacked(pos, current_king_sq, pos.side_to_move)) {
-      // CHECKMATE
-      std::cout << "Mated" << std::endl;
-    } else {
-      // STALEMATE
-      std::cout << "Stalemate" << std::endl;
-    }
   }
 
   return best_move;

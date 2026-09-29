@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <array>
 #include <iomanip>
+#include <atomic>
+#include <mutex>
 #include "position.h"
 #include "move.h"
 
@@ -15,10 +17,18 @@ struct PVLine {
 class Search {
 
 public:
+  static constexpr uint8_t MAX_DEPTH = 63;
   uint64_t total_nodes = 0;
 
-  std::array<PVLine, 64> pv_table;
-  PVLine previous_pv;
+  std::array<PVLine, 64> pv_table = {};
+  PVLine previous_pv = {};
+
+  void request_stop() { stop_requested.store(true); }
+  void reset_stop() { stop_requested.store(false); }
+  void write_uci_line(const std::string& line) {
+    std::lock_guard<std::mutex> lock(output_mutex);
+    std::cout << line << std::endl;
+  }
 
   Move iterative_deepening(Position& pos, uint8_t max_depth);
 
@@ -30,6 +40,8 @@ public:
   }
 
 private:
+  std::atomic<bool> stop_requested{false};
+  std::mutex output_mutex;
 
   // [piece_type][to_sq]
   std::array<std::array<int32_t, 64>, 12> history_heuristic = {0};
@@ -42,8 +54,7 @@ private:
   int32_t rel_ply = 0;
 
   int32_t negamax(Position& pos, uint8_t depth, int32_t alpha, int32_t beta, bool is_pv_line);
-
-  
+  int32_t quiescence(Position& pos, int32_t alpha, int32_t beta);
 
   inline void update_killers(uint8_t ply, Move move) {
     killer_heuristic[ply][1] = killer_heuristic[ply][0];

@@ -15,3 +15,5 @@ file(GLOB SOURCES "src/*.cpp")
 
 # Create the executable named 'cheezy-engine' from the found sources
 add_executable(cheezy-engine ${SOURCES})
+find_package(Threads REQUIRED)
+target_link_libraries(cheezy-engine PRIVATE Threads::Threads)
